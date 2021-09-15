@@ -1,14 +1,69 @@
 <script>
-import { defineComponent } from "@vue/runtime-core";
+import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
+import axios from "axios";
 
 export default defineComponent({
-  setup() {
+  props: ["province_id"],
+  emits: ["onSelect", "goBack"],
+  setup(props, { emit }) {
     const baseUrl = !window.location.origin.includes("localhost")
       ? window.location.origin
       : "https://quang.tvtsolutions.com";
+    const districtList = ref([]);
+    const searchString = ref("");
+
+    watch(
+      () => props.province_id,
+      () => {
+        getDistrict();
+      }
+    );
+
+    // computed
+    const districtSearchList = computed(() => {
+      if (!districtList.value || districtList.value.length == 0) {
+        return [];
+      }
+
+      if (!searchString.value) {
+        return districtList.value;
+      }
+
+      return districtList.value.filter((x) =>
+        x.name.includes(searchString.value)
+      );
+    });
+
+    // methods
+    const getDistrict = async () => {
+      try {
+        const { data } = await axios.post(
+          `${baseUrl}/country/api/v1/district`,
+          {
+            id: props.province_id,
+          }
+        );
+
+        districtList.value = data.data;
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    const onSelectClick = (district) => {
+      emit("onSelect", district);
+    };
+
+    const onGoBack = () => {
+      emit("goBack");
+    };
 
     return {
+      districtSearchList,
+      searchString,
       baseUrl,
+      onSelectClick,
+      onGoBack,
     };
   },
 });
@@ -27,7 +82,7 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-header">
           <p class="modal-title">
-            <i class="fas fa-chevron-left"></i>
+            <i class="fas fa-chevron-left" @click="onGoBack"></i>
             CHỌN QUẬN / HUYỆN
           </p>
           <button
@@ -45,23 +100,21 @@ export default defineComponent({
               placeholder="Tìm kiếm Quận / Huyện"
             />
             <button type="button" class="btn search-form__btn">
-              <img :src="`${baseUrl}/1111111111111111111/images/search-37.svg`" alt="" />
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/search-37.svg`"
+                alt=""
+              />
             </button>
           </div>
           <div class="flex-grow-1 overflow-y-auto">
             <ul class="location-nav">
-              <li data-location="Quận 1">Quận 1</li>
-              <li data-location="Quận 2">Quận 2</li>
-              <li data-location="Quận 3">Quận 3</li>
-              <li data-location="Quận 4">Quận 4</li>
-              <li data-location="Quận 5">Quận 5</li>
-              <li data-location="Quận 6">Quận 6</li>
-              <li data-location="Quận 7">Quận 7</li>
-              <li data-location="Quận 8">Quận 8</li>
-              <li data-location="Quận 9">Quận 9</li>
-              <li data-location="Quận 10">Quận 10</li>
-              <li data-location="Quận 11">Quận 11</li>
-              <li data-location="Quận 12">Quận 12</li>
+              <li
+                v-for="(district, index) in districtSearchList"
+                :key="index"
+                @click="() => onSelectClick(district)"
+              >
+                {{ district.name }}
+              </li>
             </ul>
           </div>
         </div>

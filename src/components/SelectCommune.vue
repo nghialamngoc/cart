@@ -1,14 +1,70 @@
 <script>
-import { defineComponent } from "@vue/runtime-core";
+import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
+import axios from "axios";
 
 export default defineComponent({
-  setup() {
+  props: ["district_id"],
+  emits: ["onSelect", "goBack"],
+  setup(props, { emit }) {
     const baseUrl = !window.location.origin.includes("localhost")
       ? window.location.origin
       : "https://quang.tvtsolutions.com";
+    const communeList = ref([]);
+    const searchString = ref("");
+
+    watch(
+      () => props.district_id,
+      () => {
+        getCommune();
+      }
+    );
+
+    // computed
+    const communeSearchList = computed(() => {
+      if (!communeList.value || communeList.value.length == 0) {
+        return [];
+      }
+
+      if (!searchString.value) {
+        return communeList.value;
+      }
+
+      return communeList.value.filter((x) =>
+        x.name.includes(searchString.value)
+      );
+    });
+
+    // methods
+    const getCommune = async () => {
+      if (!props.district_id) {
+        return;
+      }
+
+      try {
+        const { data } = await axios.post(`${baseUrl}/country/api/v1/commune`, {
+          id: props.district_id,
+        });
+
+        communeList.value = data.data;
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    const onSelectClick = (commune) => {
+      emit("onSelect", commune);
+    };
+
+    const onGoBack = () => {
+      emit("goBack");
+    };
 
     return {
+      communeSearchList,
+      searchString,
       baseUrl,
+      onSelectClick,
+      onGoBack,
     };
   },
 });
@@ -27,7 +83,7 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-header">
           <p class="modal-title">
-            <i class="fas fa-chevron-left"></i>
+            <i class="fas fa-chevron-left" @click="onGoBack"></i>
             CHỌN PHƯỜNG / XÃ
           </p>
           <button
@@ -45,23 +101,23 @@ export default defineComponent({
               placeholder="Tìm kiếm Phường/ Xã"
             />
             <button type="button" class="btn search-form__btn">
-              <img :src="`${baseUrl}/1111111111111111111/images/search-37.svg`" alt="" />
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/search-37.svg`"
+                alt=""
+              />
             </button>
           </div>
           <div class="flex-grow-1 overflow-y-auto">
             <ul class="location-nav">
-              <li data-location="Phường 1">Phường 1</li>
-              <li data-location="Phường 2">Phường 2</li>
-              <li data-location="Phường 3">Phường 3</li>
-              <li data-location="Phường 4">Phường 4</li>
-              <li data-location="Phường 5">Phường 5</li>
-              <li data-location="Phường 6">Phường 6</li>
-              <li data-location="Phường 7">Phường 7</li>
-              <li data-location="Phường 8">Phường 8</li>
-              <li data-location="Phường 9">Phường 9</li>
-              <li data-location="Phường 10">Phường 10</li>
-              <li data-location="Phường 11">Phường 11</li>
-              <li data-location="Phường 12">Phường 12</li>
+              <ul class="location-nav">
+                <li
+                  v-for="(commune, index) in communeSearchList"
+                  :key="index"
+                  @click="() => onSelectClick(commune)"
+                >
+                  {{ commune.name }}
+                </li>
+              </ul>
             </ul>
           </div>
         </div>

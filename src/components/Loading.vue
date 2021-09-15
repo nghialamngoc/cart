@@ -2,7 +2,7 @@
 import { defineComponent } from "@vue/runtime-core";
 
 export default defineComponent({
-  props: ["isOpen"],
+  props: ["isLoading"],
   setup() {
     const baseUrl = !window.location.origin.includes("localhost")
       ? window.location.origin
@@ -17,9 +17,9 @@ export default defineComponent({
 
 <template>
   <!-- LOADING MODAL -->
-  <div class="x-modal" v-if="isOpen">
+  <div class="x-modal" v-if="isLoading">
     <div class="x-modal__mark"></div>
-    <div class="x-modal__content">
+    <div class="x-modal__content" style="width: 100px">
       <div class="thank-box">
         <img
           class="thank-box__icon"
@@ -56,7 +56,6 @@ export default defineComponent({
   background: white;
   opacity: 1;
   z-index: 2;
-  width: 100px;
   border-radius: 10px;
 }
 

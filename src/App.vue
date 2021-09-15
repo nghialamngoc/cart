@@ -1,15 +1,15 @@
 <script>
-import CartPay from "./components/CartPay.vue";
+import Cart from "./components/Cart.vue";
 
 export default {
   components: {
-    CartPay
+    Cart
   }
 };
 </script>
 
 <template>
-  <CartPay></CartPay>
+  <Cart></Cart>
 </template>
 
 <style></style>
