@@ -10,91 +10,68 @@ import {
 import SelectCity from "./SelectCity.vue";
 import SelectDistrict from "./SelectDistrict.vue";
 import SelectCommune from "./SelectCommune.vue";
-import CartHeader from "./CartHeader.vue";
 import { date } from "../helper/format";
 import { closeModal, openModal } from "../helper/modal";
-import axios from "axios";
+import { useStore } from "vuex";
+import { baseUrl } from "../constant";
+import { getPaymentMethodList, updateCartShippingAddress } from "../api";
+import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 
 export default defineComponent({
   components: {
     SelectCity,
     SelectDistrict,
     SelectCommune,
-    CartHeader,
   },
-  props: ["baseUrl", "cart", "isFreeShip", "paymentMethod"],
-  emits: [
-    "onChangeStep",
-    "setLoading",
-    "getCartInfo",
-    "setError",
-    "setShippingFree",
-    "setPaymentMethod"
-  ],
   setup(props, { emit }) {
-    const isEdit = ref(false);
-    const customerAddress = reactive({
-      name: "",
-      phone_number: "",
-      address: "",
-      province_name: "",
-      province_id: "",
-      district_name: "",
-      district_id: "",
-      commune_name: "",
-      commune_id: "",
-      address_id: "",
-    });
+    // store
+    const store = useStore();
 
-    const note = ref("");
-    const shippingType = ref(1);
-    const quickShippingType = ref(1);
-    const shipingStandard = reactive({
-      value: {},
-    });
+    // state
+    const isEdit = computed(() => store.state.isEdit);
+    const bankCode = computed(() => store.state.bankCode);
+    const cart = computed(() => store.state.cart);
+    const billingAddress = computed(() => store.state.billingAddress);
+    const shippingAddress = computed(() => store.state.shippingAddress);
+    const shippingAddressEdit = ref({});
+    const isValidShippingAddress = computed(
+      () => store.getters.isValidShippingAddress
+    );
+    const shippingStandard = computed(() => store.state.shippingStandard);
+    const shippingType = computed(() => store.state.shippingType);
+    const quickShippingType = computed(() => store.state.quickShippingType);
+    const isFreeShip = computed(() => store.getters.isFreeShip);
+    const paymentMethod = computed(() => store.state.paymentMethod);
+    const note = computed(() => store.state.note);
+    const boxName = computed(() => store.getters.boxName);
+    const paymentMethods = computed(() => store.state.paymentMethods);
 
     const setEdit = () => {
-      isEdit.value = true;
+      shippingAddressEdit.value = {
+        ...shippingAddress.value,
+      };
+      store.commit("setEdit", true);
     };
 
     // life
     onMounted(async () => {
-      await getShippingSetting();
-      await getCustomerAddress();
+      //await getShippingSetting();
 
-      if (
-        !props.cart.value ||
-        !props.cart.value.address ||
-        !props.cart.value.phone
-      ) {
-        isEdit.value = true;
+      await store.dispatch("getBillingAddress");
+      await store.dispatch("setDefaultShippingAddress");
+      store.dispatch("getShippingStandard");
+      getPaymentMethod();
+
+      if (!isValidShippingAddress.value) {
+        store.commit("setEdit", true);
       }
     });
-
-    // computed
-    const boxName = computed(() => {
-      if (!props.cart || !props.cart.value) {
-        return "";
-      }
-
-      const box = props.cart.value.detail.filter((x) => x.type === 3);
-      return box.length > 0 ? box[0].title : "";
-    });
-
-    const paymentMethodModel = computed({
-      get() {
-        return props.paymentMethod
-      },
-      set(newValue) {
-        emit("setPaymentMethod", newValue)
-      }
-    })
 
     // watch
     watch([shippingType, quickShippingType], () => {
       let result = 0;
       if (shippingType.value == 1) {
-        result = shipingStandard.value.shipping_price || 0;
+        result = isFreeShip.value ? 0 : shippingStandard.value.shipping_price;
       }
 
       if (shippingType.value == 2) {
@@ -107,176 +84,103 @@ export default defineComponent({
         }
       }
 
-      emit("setShippingFree", result);
+      store.commit("setShippingPrice", result);
     });
 
-    // service
-    const getShippingSetting = async () => {
-      try {
-        emit("setLoading", true);
-        const { total_price, weight } = props.cart.value;
-        const { data } = await axios.post(
-          `${props.baseUrl}/shipping/api/v1/shipping_standard`,
-          {
-            total_price,
-            total_weight: weight,
-            province_id: "0",
-          }
-        );
-
-        if (Array.isArray(data.data) && data.data.length > 0) {
-          shipingStandard.value = data.data[0];
-          shippingType.value = 1;
-        } else {
-          shippingType.value = 2;
-          shipingStandard.value = {};
-        }
-      } catch (err) {
-        console.log(err);
-      } finally {
-        emit("setLoading", false);
-      }
-    };
-
-    const getCustomerAddress = async () => {
-      try {
-        emit("setLoading", true);
-        const { data } = await axios.post(
-          `${props.baseUrl}/customer/api/v1/address/list`
-        );
-
-        if (Array.isArray(data.data) && data.data.length > 0) {
-          const defaultAddress =
-            data.data.find((x) => x.is_default === true) || data.data[0];
-
-          const {
-            name,
-            phone_number,
-            address,
-            province_id,
-            province_name,
-            district_id,
-            district_name,
-            commune_id,
-            commune_name,
-            address_id,
-            customer_id,
-          } = defaultAddress;
-
-          customerAddress.name = name;
-          customerAddress.phone_number = phone_number;
-          customerAddress.address = address;
-          customerAddress.province_id = province_id;
-          customerAddress.province_name = province_name;
-          customerAddress.district_id = district_id;
-          customerAddress.district_name = district_name;
-          customerAddress.commune_id = commune_id;
-          customerAddress.commune_name = commune_name;
-          customerAddress.address_id = address_id;
-          customerAddress.customer_id = customer_id;
-        }
-      } catch (err) {
-        const {
-          fullname,
-          phone,
-          address,
-          province_id,
-          district_id,
-          commune_id,
-          province_name,
-          district_name,
-          commune_name,
-        } = props.cart.value;
-
-        if (phone != "" && fullname != "" && address != "") {
-          customerAddress.name = fullname;
-          customerAddress.phone_number = phone;
-          customerAddress.address = address;
-          customerAddress.province_id = province_id;
-          customerAddress.district_id = district_id;
-          customerAddress.commune_id = commune_id;
-          customerAddress.province_name = province_name;
-          customerAddress.district_name = district_name;
-          customerAddress.commune_name = commune_name;
-        } else {
-          setEdit.value = true;
-        }
-      } finally {
-        emit("setLoading", false);
-      }
-    };
-
     const changeAddress = async () => {
+      const {
+        name,
+        address,
+        phone_number,
+        province_id,
+        district_id,
+        commune_id,
+      } = shippingAddressEdit.value;
       if (
-        !customerAddress.name ||
-        !customerAddress.address ||
-        !customerAddress.phone_number ||
-        !customerAddress.province_id ||
-        !customerAddress.district_id ||
-        !customerAddress.commune_id
+        !name ||
+        name.trim() === "" ||
+        !address ||
+        address.trim() === "" ||
+        !phone_number ||
+        !province_id ||
+        !district_id ||
+        !commune_id
       ) {
-        emit("setError", "Vui lòng điền đầy đủ thông tin!");
+        store.dispatch("setError", "Vui lòng điền đầy đủ thông tin nhận hàng!");
         return;
       }
+
       try {
-        emit("setLoading", true);
-        if (customerAddress.address_id != "") {
-          await axios.post(`${props.baseUrl}/customer/api/v1/address/update`, {
-            ...customerAddress,
-            full_address: customerAddress.address,
-          });
-          getCustomerAddress();
-        } else {
-          await axios.post(`${props.baseUrl}/cart/api/v1/update_address`, {
-            full_name: customerAddress.name,
-            address: customerAddress.address,
-            phone: customerAddress.phone_number,
-            province_id: customerAddress.province_id,
-            district_id: customerAddress.district_id,
-            commune_id: customerAddress.commune_id,
-          });
-          emit("getCartInfo", true);
-        }
-        isEdit.value = false;
-        getShippingSetting();
+        store.dispatch("setLoading", true);
+        await updateCartShippingAddress({
+          full_name: name,
+          address: address,
+          phone: phone_number.toString(),
+          province_id: province_id,
+          district_id: district_id,
+          commune_id: commune_id,
+          is_default: false,
+        });
+
+        await store.dispatch("getCart");
+        await store.dispatch("setDefaultShippingAddress");
+
+        store.commit("setEdit", false);
       } catch (err) {
-        console.log(err);
+        store.dispatch("setError", resolveErrorMessage(err));
       } finally {
-        emit("setLoading", false);
+        store.dispatch("setLoading", false);
+      }
+    };
+
+    const getPaymentMethod = async () => {
+      try {
+        const data = await getPaymentMethodList();
+
+        if (Array.isArray(data) && data.length > 0) {
+          store.commit("setPaymentMethods", data)
+          store.commit("setPaymentMethod", data[0].payment_id);
+        }
+      } catch (err) {
+        //
       }
     };
 
     const onSelectProvince = ({ id, name }) => {
-      customerAddress.province_id = id;
-      customerAddress.province_name = name;
+      shippingAddressEdit.value.province_id = id;
+      shippingAddressEdit.value.province_name = name;
+
       resetDistrict();
-      resetCommune();
       closeModal("cityModal");
       openModal("districtModal");
     };
 
     const onSelectDistrict = ({ id, name }) => {
-      customerAddress.district_id = id;
-      customerAddress.district_name = name;
+      shippingAddressEdit.value.district_id = id;
+      shippingAddressEdit.value.district_name = name;
+
       resetCommune();
       closeModal("districtModal");
       openModal("wardModal");
     };
 
     const onSelectCommune = ({ id, name }) => {
-      customerAddress.commune_id = id;
-      customerAddress.commune_name = name;
+      shippingAddressEdit.value.commune_id = id;
+      shippingAddressEdit.value.commune_name = name;
+
       closeModal("wardModal");
     };
 
     const resetDistrict = () => {
-      customerAddress.district_id = "";
-      customerAddress.district_name = "";
+      shippingAddressEdit.value.district_id = "";
+      shippingAddressEdit.value.district_name = "";
+      shippingAddressEdit.value.commune_id = "";
+      shippingAddressEdit.value.commune_name = "";
     };
 
     const resetCommune = () => {
-      customerAddress.commune_name = "";
-      customerAddress.commune_id = "";
+      shippingAddressEdit.value.commune_id = "";
+      shippingAddressEdit.value.commune_name = "";
     };
 
     const goBackSelectProvince = () => {
@@ -289,24 +193,61 @@ export default defineComponent({
       openModal("districtModal");
     };
 
+    const changeShippingType = (value) => {
+      store.commit("setShippingType", value);
+
+      if (value == 2) {
+        store.commit("setQuickShippingType", 1);
+      }
+    };
+
+    const changeQuickShippingType = (value) => {
+      store.commit("setQuickShippingType", value);
+    };
+
+    const changePaymentMethod = (value) => {
+      store.commit("setPaymentMethod", value);
+    };
+
+    const changeNote = (value) => {
+      store.commit("setNote", value);
+    };
+
+    const onBankChange = (value) => {
+      store.commit("setBankCode", value);
+    };
+
     return {
-      paymentMethodModel,
-      quickShippingType,
-      boxName,
-      shipingStandard,
+      cart,
       note,
-      shippingType,
-      customerAddress,
       isEdit,
+      baseUrl,
+      boxName,
+      bankCode,
+      isFreeShip,
+      shippingType,
+      paymentMethod,
+      paymentMethods,
+      billingAddress,
+      shippingAddress,
+      shippingStandard,
+      quickShippingType,
+      shippingAddressEdit,
+
+      date,
       setEdit,
       openModal,
-      onSelectProvince,
-      onSelectDistrict,
+      changeNote,
+      onBankChange,
+      changeAddress,
       onSelectCommune,
+      onSelectDistrict,
+      onSelectProvince,
+      changeShippingType,
+      changePaymentMethod,
       goBackSelectProvince,
       goBackSelectDistrict,
-      date,
-      changeAddress,
+      changeQuickShippingType,
     };
   },
 });
@@ -332,10 +273,10 @@ export default defineComponent({
                 <div class="checkout__body__head">
                   <div class="checkout__body__head__left">
                     <p class="checkout__body__title d-flex align-items-center">
-                      {{ customerAddress.name }}
+                      {{ shippingAddress.name }}
                       <span
                         class="badge badge-blue-custom badge-sm ms-10"
-                        v-if="customerAddress.is_default"
+                        v-if="shippingAddress.is_default"
                         >Mặc định</span
                       >
                     </p>
@@ -351,9 +292,11 @@ export default defineComponent({
                   </div>
                 </div>
                 <div class="text-63 ls-20">
-                  <p class="mb-1">{{ customerAddress.phone_number }}</p>
+                  <p class="mb-1">
+                    {{ shippingAddress.phone_number }}
+                  </p>
                   <p class="mb-0">
-                    {{ customerAddress.address }}
+                    {{ shippingAddress.address }}
                   </p>
                 </div>
               </div>
@@ -365,17 +308,17 @@ export default defineComponent({
                   type="text"
                   class="form-control form-control--underline"
                   placeholder="VD: Văn Nam"
-                  v-model="customerAddress.name"
+                  v-model="shippingAddressEdit.name"
                 />
                 <div class="invalid-feedback"></div>
               </div>
               <div class="mb-3">
                 <label class="fw-medium">Số điện thoại</label>
                 <input
-                  type="text"
+                  type="number"
                   class="form-control form-control--underline"
                   placeholder="VD: 0905 555 000"
-                  v-model="customerAddress.phone_number"
+                  v-model="shippingAddressEdit.phone_number"
                 />
                 <div class="invalid-feedback"></div>
               </div>
@@ -387,7 +330,7 @@ export default defineComponent({
                     form-control form-control--underline form-control--icon
                   "
                   placeholder="VD: 20 Hai Bà Trưng"
-                  v-model="customerAddress.address"
+                  v-model="shippingAddressEdit.address"
                 />
                 <img
                   :src="`${baseUrl}/1111111111111111111/images/icon-location-2.svg`"
@@ -404,7 +347,7 @@ export default defineComponent({
                   "
                   placeholder="VD : Hồ Chí Minh"
                   readonly
-                  v-model="customerAddress.province_name"
+                  v-model="shippingAddressEdit.province_name"
                   style="background-color: white"
                   @click="() => openModal('cityModal')"
                 />
@@ -423,8 +366,8 @@ export default defineComponent({
                   "
                   placeholder="VD: quận Gò Vấp"
                   id="districtInput"
-                  v-model="customerAddress.district_name"
-                  :disabled="!customerAddress.province_name"
+                  v-model="shippingAddressEdit.district_name"
+                  :disabled="!shippingAddressEdit.province_name"
                   readonly
                   style="background-color: white"
                   @click="() => openModal('districtModal')"
@@ -435,7 +378,7 @@ export default defineComponent({
                     position: 'absolute',
                     right: '0',
                     bottom: '10px',
-                    opacity: !customerAddress.province_name ? '0.5' : '1',
+                    opacity: !shippingAddressEdit.province_name ? '0.5' : '1',
                   }"
                 />
                 <div class="invalid-feedback"></div>
@@ -448,8 +391,8 @@ export default defineComponent({
                     form-control form-control--underline form-control--icon
                   "
                   placeholder="VD: phường 11"
-                  v-model="customerAddress.commune_name"
-                  :disabled="!customerAddress.district_name"
+                  v-model="shippingAddressEdit.commune_name"
+                  :disabled="!shippingAddressEdit.district_name"
                   readonly
                   style="background-color: white"
                   @click="() => openModal('wardModal')"
@@ -460,7 +403,7 @@ export default defineComponent({
                     position: 'absolute',
                     right: '0',
                     bottom: '10px',
-                    opacity: !customerAddress.district_name ? '0.5' : '1',
+                    opacity: !shippingAddressEdit.district_name ? '0.5' : '1',
                   }"
                 />
                 <div class="invalid-feedback"></div>
@@ -492,15 +435,12 @@ export default defineComponent({
             <h2 class="checkout__head__title">PHƯƠNG THỨC GIAO HÀNG</h2>
           </div>
           <div class="checkout__body checkout__body--outside">
-            <label
-              class="box-picker"
-              v-if="Object.keys(shipingStandard.value).length > 0"
-            >
+            <label class="box-picker" v-if="shippingStandard.shipping_id">
               <input
                 type="radio"
                 class="box-picker__input"
-                v-model="shippingType"
-                value="1"
+                :checked="shippingType === 1"
+                @click="() => changeShippingType(1)"
               />
               <div class="box-picker__checkmark">
                 <div class="row gx-2 align-items-center">
@@ -544,7 +484,7 @@ export default defineComponent({
                                   isFreeShip
                                     ? 0
                                     : Intl.NumberFormat("vi-VN").format(
-                                        shipingStandard.value.shipping_price
+                                        shippingStandard.shipping_price
                                       )
                                 }}đ
                               </p>
@@ -561,8 +501,8 @@ export default defineComponent({
               <input
                 type="radio"
                 class="box-picker__input"
-                v-model="shippingType"
-                value="2"
+                :checked="shippingType === 2"
+                @click="() => changeShippingType(2)"
               />
               <div class="box-picker__checkmark">
                 <div class="row gx-2 align-items-center">
@@ -600,8 +540,8 @@ export default defineComponent({
                     <input
                       type="radio"
                       class="box-picker__input"
-                      value="1"
-                      v-model="quickShippingType"
+                      :checked="quickShippingType === 2"
+                      @click="() => changeQuickShippingType(2)"
                     />
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
@@ -645,8 +585,8 @@ export default defineComponent({
                     <input
                       type="radio"
                       class="box-picker__input"
-                      value="2"
-                      v-model="quickShippingType"
+                      :checked="quickShippingType === 3"
+                      @click="() => changeQuickShippingType(3)"
                     />
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
@@ -708,12 +648,16 @@ export default defineComponent({
           </div>
           <div class="checkout__body checkout__body--outside pt-2">
             <div class="box-picker-wrap">
-              <label class="box-picker">
+              <label
+                class="box-picker"
+                v-for="(method, index) in paymentMethods"
+                :key="index"
+              >
                 <input
                   type="radio"
                   class="box-picker__input"
-                  value="0"
-                  v-model="paymentMethodModel"
+                  :checked="paymentMethod === method.payment_id"
+                  @click="() => changePaymentMethod(method.payment_id)"
                 />
                 <div class="box-picker__checkmark">
                   <div class="row gx-2 align-items-center">
@@ -723,15 +667,12 @@ export default defineComponent({
                     <div class="col-10">
                       <div class="unit-item unit-item--lg">
                         <div class="unit-item__logo">
-                          <img
-                            :src="`${baseUrl}/1111111111111111111/images/money.svg`"
-                            alt=""
-                          />
+                          <img :src="method.image" alt="" />
                         </div>
                         <div class="unit-item__info">
-                          <p class="unit-item__title">Tiền mặt</p>
+                          <p class="unit-item__title">{{ method.name }}</p>
                           <p class="unit-item__desc">
-                            Thanh toán khi nhận hàng
+                            {{ method.instruction }}
                           </p>
                         </div>
                       </div>
@@ -747,80 +688,35 @@ export default defineComponent({
                   </div>
                 </div>
               </label>
-              <label class="box-picker">
-                <input
-                  type="radio"
-                  class="box-picker__input"
-                  value="1"
-                  v-model="paymentMethodModel"
-                />
-                <div class="box-picker__checkmark">
-                  <div class="row gx-2 align-items-center">
-                    <div class="col-1">
-                      <div class="box-picker__checkmark__icon"></div>
-                    </div>
-                    <div class="col-10">
-                      <div class="unit-item unit-item--lg">
-                        <div class="unit-item__logo">
-                          <img
-                            :src="`${baseUrl}/1111111111111111111/images/momo.png`"
-                            alt=""
-                          />
-                        </div>
-                        <div class="unit-item__info">
-                          <p class="unit-item__title">Thanh toán MOMO</p>
-                          <p class="unit-item__desc">Quét mã để thanh toán</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-1 text-end">
-                      <div class="box-picker__checkmark__check">
-                        <img
-                          :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
-                          alt=""
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </label>
-              <label class="box-picker">
-                <input
-                  type="radio"
-                  class="box-picker__input"
-                  value="2"
-                  v-model="paymentMethodModel"
-                />
-                <div class="box-picker__checkmark">
-                  <div class="row gx-2 align-items-center">
-                    <div class="col-1">
-                      <div class="box-picker__checkmark__icon"></div>
-                    </div>
-                    <div class="col-10">
-                      <div class="unit-item unit-item--lg">
-                        <div class="unit-item__logo">
-                          <img
-                            :src="`${baseUrl}/1111111111111111111/images/vnpay.png`"
-                            alt=""
-                          />
-                        </div>
-                        <div class="unit-item__info">
-                          <p class="unit-item__title">Thanh toán VNPAY</p>
-                          <p class="unit-item__desc">Qua ứng dụng VNPAY</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-1 text-end">
-                      <div class="box-picker__checkmark__check">
-                        <img
-                          :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
-                          alt=""
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </label>
+              <template v-if="paymentMethod === 3">
+                <select
+                  :value="bankCode"
+                  @change="(e) => onBankChange(e.target.value)"
+                >
+                  <option value="NCB">Ngan hang NCB</option>
+                  <option value="AGRIBANK">Ngan hang Agribank</option>
+                  <option value="SCB">Ngan hang SCB</option>
+                  <option value="SACOMBANK">Ngan hang SacomBank</option>
+                  <option value="EXIMBANK">Ngan hang EximBank</option>
+                  <option value="MSBANK">Ngan hang MSBANK</option>
+                  <option value="NAMABANK">Ngan hang NamABank</option>
+                  <option value="VNMART">Vi dien tu VnMart</option>
+                  <option value="VIETINBANK">Ngan hang Vietinbank</option>
+                  <option value="VIETCOMBANK">Ngan hang VCB</option>
+                  <option value="HDBANK">Ngan hang HDBank</option>
+                  <option value="DONGABANK">Ngan hang Dong A</option>
+                  <option value="TPBANK">Ngân hàng TPBank</option>
+                  <option value="OJB">Ngân hàng OceanBank</option>
+                  <option value="BIDV">Ngân hàng BIDV</option>
+                  <option value="TECHCOMBANK">Ngân hàng Techcombank</option>
+                  <option value="VPBANK">Ngan hang VPBank</option>
+                  <option value="MBBANK">Ngan hang MBBank</option>
+                  <option value="ACB">Ngan hang ACB</option>
+                  <option value="OCB">Ngan hang OCB</option>
+                  <option value="IVB">Ngan hang IVB</option>
+                  <option value="VISA">Thanh toan qua VISA/MASTER</option>
+                </select>
+              </template>
             </div>
             <div class="ls-20 mt-3">
               <strong class="fw-600">Tiền mặt:</strong> Bạn sẽ thanh toán bằng
@@ -853,7 +749,8 @@ export default defineComponent({
             <textarea
               class="checkout__body__textarea form-control"
               placeholder="Lời nhắn của bạn"
-              v-model="note"
+              :value="note"
+              @change="(e) => changeNote(e.target.value)"
             ></textarea>
           </div>
         </section>
@@ -877,7 +774,7 @@ export default defineComponent({
           <div class="checkout__body checkout__body--outside pt-2">
             <div
               class="checkout-pd"
-              v-for="(product, index) in cart.value.detail"
+              v-for="(product, index) in cart.detail"
               :key="index"
             >
               <div class="checkout-pd__img">
@@ -888,7 +785,7 @@ export default defineComponent({
                   {{ product.title }}
                   {{ product.attribute.size }}
                   <br />
-                  <span class="fw-semi">({{ boxName }})</span>
+                  <span class="fw-semi" v-if="boxName">({{ boxName }})</span>
                 </p>
                 <p class="checkout-pd__price">
                   {{ product.quantity }} <span class="fz-10 mx-2">X</span>
@@ -914,14 +811,14 @@ export default defineComponent({
 
   <!-- Select district_name -->
   <SelectDistrict
-    :province_id="customerAddress.province_id"
+    :province_id="shippingAddressEdit.province_id"
     @onSelect="onSelectDistrict"
     @goBack="goBackSelectProvince"
   />
 
   <!-- Select commune_name -->
   <SelectCommune
-    :district_id="customerAddress.district_id"
+    :district_id="shippingAddressEdit.district_id"
     @onSelect="onSelectCommune"
     @goBack="goBackSelectDistrict"
   />

@@ -99,6 +99,7 @@ export default defineComponent({
               class="form-control search-form__input"
               type="text"
               placeholder="Tìm kiếm Phường/ Xã"
+              v-model="searchString"
             />
             <button type="button" class="btn search-form__btn">
               <img

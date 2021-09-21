@@ -1,43 +1,136 @@
 <script>
 import { computed, defineComponent } from "@vue/runtime-core";
+import { useStore } from "vuex";
+import { addOrder } from "../api";
 
 export default defineComponent({
-  props: ["cart", "step", "shippingPrice"],
-  emits: ["onChangeStep"],
-  setup(props, { emit }) {
-    const totalPrice = computed(() => {
-      const { cart } = props
-      if (!cart.value) {
-        return 0;
+  setup() {
+    // store
+    const store = useStore();
+
+    //state
+    const isEdit = computed(() => store.state.isEdit);
+    const cart = computed(() => store.state.cart);
+    const note = computed(() => store.state.note);
+    const step = computed(() => store.state.step);
+    const shippingType = computed(() => store.state.shippingType);
+    const quickShippingType = computed(() => store.state.quickShippingType);
+    const billingAddress = computed(() => store.state.billingAddress);
+    const shippingAddress = computed(() => store.state.shippingAddress);
+    const paymentMethod = computed(() => store.state.paymentMethod);
+    const isValidShippingAddress = computed(
+      () => store.getters.isValidShippingAddress
+    );
+    const isFreeShip = computed(() => store.getters.isFreeShip);
+    const shippingPrice = computed(() => store.state.shippingPrice);
+    const totalPrice = computed(() => store.getters.totalPrice);
+    const subPrice = computed(() => store.getters.subPrice);
+    const discount = computed(() => store.getters.discount);
+    const bankCode = computed(() => store.state.bankCode);
+    const paymentMethods = computed(() => store.state.paymentMethods);
+
+    const onSubmit = async () => {
+      if (step.value === 1) {
+        store.dispatch("setStep", step.value + 1);
+        return;
       }
 
-      let result = cart.value.total_price;
-
-      if (cart.value.detail) {
-        const pack = cart.value.detail.find((x) => x.type === 3);
-        if (pack) {
-          result += pack.price_retail;
+      if (step.value === 2) {
+        if (isValidShippingAddress.value && !isEdit.value) {
+          await createOrder();
+        } else {
+          store.dispatch(
+            "setError",
+            "Vui lòng nhập đầy đủ và lưu thông tin nhận hàng!"
+          );
         }
       }
+    };
 
-      return result;
-    });
+    const createOrder = async () => {
+      const data = cart.value;
+      try {
+        const payment = paymentMethods.value.find(
+          (x) => x.payment_id === paymentMethod.value
+        );
+        const payload = {
+          cash: 0,
+          cod: data.total_price - data.discount,
+          discount: data.discount,
+          transfer_money: 0,
+          total_price: data.total_price,
+          total_weight: data.weight,
+          is_free_shipping: isFreeShip.value,
+          shipping_fee: shippingPrice.value,
+          note: note.value,
+          delivery_type: shippingType.value === 1 ? 1 : quickShippingType.value,
+          extend_code: "",
+          bill_full_name: billingAddress.value.customer_id
+            ? billingAddress.value.name
+            : "",
+          bill_phone_number: billingAddress.value.customer_id
+            ? billingAddress.value.phone_number
+            : "",
+          shipping_full_name: shippingAddress.value.name,
+          shipping_phone_number: shippingAddress.value.phone_number,
+          shipping_address: shippingAddress.value.address,
+          shipping_province_id: shippingAddress.value.province_id,
+          shipping_province_name: shippingAddress.value.province_name,
+          shipping_district_id: shippingAddress.value.district_id,
+          shipping_district_name: shippingAddress.value.district_name,
+          shipping_commune_id: shippingAddress.value.commune_id,
+          shipping_commune_name: shippingAddress.value.commune_name,
+          address_id: billingAddress.value.customer_id
+            ? billingAddress.value.address_id
+            : "0",
+          customer_id: billingAddress.value.customer_id
+            ? billingAddress.value.customer_id
+            : "0",
+          status: 1,
+          payment_method_type: payment.type || 0,
+          bank_code: bankCode.value,
+          order_detail: data.detail.map((x) => {
+            return {
+              name: x.title,
+              retail_price: x.price_retail,
+              discount: x.price_sale,
+              quantity: x.quantity,
+              product_id: Number(x.product_id),
+              parent_id: Number(x.parent_id),
+              sku: x.sku,
+              type: x.type,
+            };
+          }),
+        };
 
-    const subPrice = computed(() => {
-      const {cart, shippingPrice} = props
+        store.dispatch("setLoading", true);
+        const { is_change, id, redirect } = await addOrder(payload);
 
-      if (!cart.value) {
-        return 0;
+        if (redirect) {
+          location.replace(redirect);
+          return;
+        }
+
+        if (is_change) {
+          await store.dispatch("getCart");
+          store.commit("setCartChange", true);
+          return;
+        }
+
+        store.commit("setOrderId", id);
+        store.commit("setStep", 3);
+      } catch (err) {
+        store.dispatch("setError", "Có lỗi xảy ra vui lòng thử lại!");
+      } finally {
+        store.dispatch("setLoading", false);
       }
-
-      return totalPrice.value + shippingPrice - cart.value.discount;
-    });
-
-    const onSubmit = () => {
-      emit("onChangeStep", props.step + 1);
     };
 
     return {
+      step,
+      cart,
+      shippingPrice,
+      discount,
       totalPrice,
       subPrice,
       onSubmit,
@@ -64,7 +157,7 @@ export default defineComponent({
       <div class="row row-cols-2 gx-2 align-items-center">
         <div class="col fz-14 fw-medium">Giảm giá</div>
         <div class="col text-end fz-16 fw-semi">
-          {{ Intl.NumberFormat("vi-VN").format(cart.value.discount) }}đ
+          {{ Intl.NumberFormat("vi-VN").format(discount) }}đ
         </div>
       </div>
     </div>
@@ -87,8 +180,9 @@ export default defineComponent({
         <button
           @click="onSubmit"
           class="btn btn-primary fz-14 fw-semi p-2 w-100"
+          :disabled="!cart.detail || cart.detail.length <= 0"
         >
-          Đặt hàng
+          {{ step == 1 ? "Mua hàng" : "Đặt hàng" }}
         </button>
       </div>
     </div>

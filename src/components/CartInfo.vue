@@ -1,91 +1,51 @@
 <script>
 import { computed, defineComponent, ref } from "@vue/runtime-core";
-import axios from "axios";
-import { closeModal, openModal } from "../helper/modal";
+import { useStore } from "vuex";
 import { resolveErrorMessage } from "../helper/resolveErrorMessage";
+import { closeModal, openModal } from "../helper/modal";
+
+// constants
+import { baseUrl } from "../constant";
+
+// components
 import ProductModal from "./ProductModal.vue";
+import { getProductDetail } from "../api";
 
 export default defineComponent({
-  props: [
-    "baseUrl",
-    "cart",
-    "vouchers",
-    "packList",
-    "giftList",
-    "collection",
-    "freeShipingWhen",
-  ],
-  emits: [
-    "addProductToCart",
-    "addVoucher",
-    "setLoading",
-    "setError",
-    "getCartInfo",
-    "addVoucherCode",
-  ],
   components: {
     ProductModal,
   },
-  setup({ cart, vouchers, baseUrl }, { emit }) {
+  setup() {
+    // store
+    const store = useStore();
+
+    // state
+    const cart = computed(() => store.state.cart);
+    const boxList = computed(() => store.state.boxList);
+    const giftList = computed(() => store.state.giftList);
+    const collection = computed(() => store.state.collection);
+    const productList = computed(() => store.getters.productList);
+    const boxSelected = computed(() => store.getters.boxSelected);
+    const giftSelected = computed(() => store.getters.giftSelected);
+    const voucherList = computed(() => store.state.voucherList);
+    const voucherHotList = computed(() => store.getters.voucherHotList);
+    const voucherNormal = computed(() => store.getters.voucherNormal);
+    const vouchersSpecialList = computed(
+      () => store.getters.vouchersSpecialList
+    );
+    const validVoucherList = computed(() => store.getters.validVoucherList);
+    const freeShipCondition = computed(() => store.state.freeShipCondition);
+
     const voucherCode = ref("");
-    const packDetail = ref({});
+    const boxDetail = ref({});
     const productDetail = ref({});
     const viewType = ref(1); // 1: product, 3: gift
     const isEdit = ref(false); // false: new, true: edit
     const productEditId = ref("");
 
-    // computed
-    const products = computed(() => {
-      return cart.value?.detail
-        ? cart.value.detail.filter((x) => x.type === 1)
-        : [];
-    });
-
-    const packSelected = computed(() => {
-      if (!cart.value?.detail) {
-        return "";
-      }
-
-      const pack = cart.value?.detail.find((x) => x.type === 3);
-      if (pack) {
-        return pack.product_id;
-      }
-
-      return "";
-    });
-
-    const giftSelected = computed(() => {
-      if (!cart.value?.detail) {
-        return "";
-      }
-
-      const pack = cart.value?.detail.find((x) => x.type === 2);
-      if (pack) {
-        return pack;
-      }
-
-      return {};
-    });
-
-    const vouchersHot = computed(() => {
-      return vouchers.value ? vouchers.value.filter((x) => x.level === 2) : [];
-    });
-
-    const vouchersSpecial = computed(() => {
-      return vouchers.value ? vouchers.value.filter((x) => x.level === 3) : [];
-    });
-
-    const validVoucher = computed(() => {
-      return vouchers.value
-        ? vouchers.value.filter(
-            (x) => x.discount_limit <= cart.value.total_price
-          )
-        : [];
-    });
-
     // methods
     const onQuantityChange = (product_id, quantity) => {
-      emit("addProductToCart", {
+      store.dispatch("addProductToCart", {
         product_id,
         quantity,
         type: 1,
@@ -93,15 +53,14 @@ export default defineComponent({
     };
 
     const viewDetailPack = (pack) => {
-      packDetail.value = pack;
+      boxDetail.value = pack;
     };
 
     const onPackChange = (id) => {
-      if (id === packSelected.value) {
+      if (id === boxSelected.value) {
         return;
       }
-
-      emit("addProductToCart", {
+      store.dispatch("addProductToCart", {
         product_id: id,
         quantity: 1,
         type: 3,
@@ -119,79 +78,88 @@ export default defineComponent({
           productEditId.value = "";
         }
 
-        emit("setLoading", true);
-        const { data } = await axios.post(
-          `${baseUrl}/product/api/v1/cart/detail`,
-          {
-            id: Number(product.parent_id)
-              ? product.parent_id
-              : product.product_id,
-          }
+        store.dispatch("setLoading", true);
+        const data = await getProductDetail(
+          Number(product.parent_id) ? product.parent_id : product.product_id
         );
 
-        productDetail.value = data.data;
+        productDetail.value = data;
 
         closeModal("giftListModal");
         openModal("addToCartModal");
       } catch (err) {
-        console.log(err);
-        //setError(resolveErrorMessage(err.response));
+        store.dispatch("setError", resolveErrorMessage(err));
       } finally {
-        emit("setLoading", false);
+        store.dispatch("setLoading", false);
       }
     };
 
     const updateCart = async (newProductId) => {
       try {
-        emit("setLoading", true);
-
         if (isEdit.value) {
-          await axios.post(`${baseUrl}/cart/api/v1/replace`, {
+          await store.dispatch("replaceProductInCart", {
             old_product_id: productEditId.value,
             new_product_id: newProductId,
             type: viewType.value,
           });
         } else {
-          emit("addProductToCart", {
+          await store.dispatch("addProductToCart", {
             product_id: newProductId,
             quantity: 1,
             type: viewType.value,
           });
         }
-
-        emit("getCartInfo");
       } catch (err) {
-        emit("setError", resolveErrorMessage(err.response));
+        console.log(err);
       } finally {
         closeModal("addToCartModal");
-        emit("setLoading", false);
       }
     };
 
-    const applyVoucherCode = () => {
-      emit("addVoucherCode", voucherCode.value);
+    const applyVoucherCode = async () => {
+      if (!voucherCode.value) {
+        return;
+      }
+      await store.dispatch("addVoucherCode", voucherCode.value);
     };
 
-    const selectVoucher = (voucher) => {
-      emit("addVoucher", voucher);
+    const selectVoucher = async (voucher) => {
+      if (cart.value.discount_code === voucher.voucher_id) {
+        return;
+      }
+
+      if (voucher.discount_limit > cart.value.total_price) {
+        store.dispatch("setError", "Bạn chưa đủ điều kiện áp dụng voucher này");
+        return;
+      }
+
+      await store.dispatch("addVoucher", voucher.voucher_id);
     };
 
     const buyMore = () => {
-      document.getElementById('productForYou').scrollIntoView();
+      document.getElementById("productForYou").scrollIntoView();
     };
 
     return {
+      cart,
       isEdit,
-      productEditId,
-      productDetail,
-      giftSelected,
-      validVoucher,
-      products,
-      packSelected,
-      vouchersHot,
-      vouchersSpecial,
-      packDetail,
+      boxList,
+      baseUrl,
+      giftList,
+      boxDetail,
+      collection,
       voucherCode,
+      boxSelected,
+      voucherList,
+      productList,
+      giftSelected,
+      productDetail,
+      productEditId,
+      voucherNormal,
+      voucherHotList,
+      validVoucherList,
+      freeShipCondition,
+      vouchersSpecialList,
       viewDetailPack,
       onPackChange,
       selectVoucher,
@@ -211,7 +179,7 @@ export default defineComponent({
       <div class="container-fluid">
         <div
           class="custom-alert mb-10"
-          v-if="cart.value.customer_id == '0' || cart.value.customer_id == ''"
+          v-if="cart.customer_id == '0' || cart.customer_id == ''"
         >
           <div class="custom-alert__icon">
             <img :src="`${baseUrl}/1111111111111111111/images/sign-out.svg`" />
@@ -234,7 +202,7 @@ export default defineComponent({
         </div>
         <div
           class="row gx-2 align-items-center"
-          v-if="freeShipingWhen.shipping_id"
+          v-if="freeShipCondition.shipping_id"
         >
           <div class="col">
             <div class="d-flex align-items-center">
@@ -245,13 +213,13 @@ export default defineComponent({
               />
               <div
                 class="flex-grow-1"
-                v-if="freeShipingWhen.range_from > cart.value.total_price"
+                v-if="freeShipCondition.range_from > cart.total_price"
               >
                 <p class="mb-0">
                   Mua thêm
                   {{
                     Intl.NumberFormat("vi-VN").format(
-                      freeShipingWhen.range_from - cart.value.total_price
+                      freeShipCondition.range_from - cart.total_price
                     )
                   }}đ để hưởng
                 </p>
@@ -277,7 +245,11 @@ export default defineComponent({
     <div class="separate-line"></div>
     <div class="section py-30">
       <div class="container-fluid">
-        <div class="m-cart" v-for="(product, index) in products" :key="index">
+        <div
+          class="m-cart"
+          v-for="(product, index) in productList"
+          :key="index"
+        >
           <div class="m-cart__img">
             <img :src="product.image" alt="" />
           </div>
@@ -286,22 +258,23 @@ export default defineComponent({
               <button
                 class="btn-close m-cart__delete"
                 style="outline: none; box-shadow: none"
-                @click="
-                  () => onQuantityChange(product.product_id, -product.quantity)
-                "
+                @click="() => onQuantityChange(product.product_id, -product.quantity)"
               ></button>
             </div>
             <div class="m-cart__info__center">
               <p class="m-cart__title">
                 <a href="#">{{ product.title }}</a>
               </p>
-              <p class="m-cart__price">
+              <p class="m-cart__price" v-if="product.price_sale != 0">
                 {{ Intl.NumberFormat("vi-VN").format(product.price_sale) }}đ
                 <del v-if="product.price_sale != product.price_retail"
                   >{{
                     Intl.NumberFormat("vi-VN").format(product.price_retail)
                   }}đ</del
                 >
+              </p>
+              <p class="m-cart__price" v-else>
+                {{ Intl.NumberFormat("vi-VN").format(product.price_retail) }}đ
               </p>
             </div>
             <div class="m-cart__info__bottom">
@@ -463,18 +436,18 @@ export default defineComponent({
         </div>
         <div class="pack-wrap">
           <div
-            v-for="(pack, index) in packList.value"
+            v-for="(box, index) in boxList"
             :class="`pack-item`"
             :key="index"
           >
             <div class="pack-item__img">
-              <img :src="pack.image" alt="" />
+              <img :src="box.image" alt="" />
             </div>
             <div class="pack-item__info">
               <div class="pack-item__info__row pack-item__info__row--1">
                 <div class="pack-item__info__row__left">
-                  <p class="pack-item__title">{{ pack.title }}</p>
-                  <p class="pack-item__desc">{{ pack.sub_title }}</p>
+                  <p class="pack-item__title">{{ box.title }}</p>
+                  <p class="pack-item__desc">{{ box.sub_title }}</p>
                 </div>
                 <div class="pack-item__info__row__right">
                   <button
@@ -482,7 +455,7 @@ export default defineComponent({
                     class="btn btn-icon-start pack-item__detail"
                     data-bs-toggle="modal"
                     data-bs-target="#packDetailModal"
-                    @click="() => viewDetailPack(pack)"
+                    @click="() => viewDetailPack(box)"
                   >
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/search-8E.svg`"
@@ -497,12 +470,12 @@ export default defineComponent({
                   <p class="pack-item__price">
                     <span class="pack-item__price__number"
                       >{{
-                        Intl.NumberFormat("vi-VN").format(pack.price_retail)
+                        Intl.NumberFormat("vi-VN").format(box.price_retail)
                       }}đ</span
                     >
                     <span
                       class="pack-item__price__text"
-                      v-if="pack.price_retail === 0"
+                      v-if="box.price_retail === 0"
                       >(Miễn phí)</span
                     >
                   </p>
@@ -511,25 +484,23 @@ export default defineComponent({
                   <label class="custom-checkbox pack-item__btn">
                     <input
                       type="radio"
-                      :name="pack.product_id"
-                      @click="() => onPackChange(pack.product_id)"
+                      :name="box.product_id"
+                      @click="() => onPackChange(box.product_id)"
                     />
                     <span
                       class="checkmark-btn"
                       :style="{
                         backgroundColor:
-                          pack.product_id === packSelected
-                            ? '#DCF0FF'
-                            : 'white',
+                          box.product_id === boxSelected ? '#DCF0FF' : 'white',
                         borderColor:
-                          pack.product_id === packSelected
+                          box.product_id === boxSelected
                             ? '#DCF0FF'
                             : '#004377',
                       }"
                     >
                       {{
-                        pack.product_id === packSelected
-                          ? pack.price_retail === 0
+                        box.product_id === boxSelected
+                          ? box.price_retail === 0
                             ? "Mặc định"
                             : "Đã chọn"
                           : "Chọn hộp này"
@@ -564,7 +535,7 @@ export default defineComponent({
             Chọn mã
           </button>
         </div>
-        <div class="row row-cols-2 gx-3 mb-10" v-if="vouchers.value.length > 0">
+        <div class="row row-cols-2 gx-3 mb-10" v-if="voucherList.length > 0">
           <div class="col fw-semi">Voucher khả dụng</div>
           <div class="col text-end">
             <button
@@ -572,7 +543,7 @@ export default defineComponent({
               class="btn btn-fit btn-icon-end"
               data-bs-toggle="modal"
               data-bs-target="#voucherModal"
-              v-if="vouchers.value.length > 1"
+              v-if="voucherList.length >= 1"
             >
               Xem tất cả
               <i class="fas fa-chevron-right"></i>
@@ -581,30 +552,21 @@ export default defineComponent({
         </div>
         <div class="vb-cate__content">
           <div
-            :class="`vb-item ${voucher.type == 2 && 'vb-item--special'}`"
-            v-for="(voucher, index) in validVoucher"
+            :class="`vb-item ${voucher.level == 3 && 'vb-item--special'}`"
+            v-for="(voucher, index) in voucherList"
             :key="index"
           >
             <div
               class="vb-item__inner"
               :style="{
                 backgroundImage:
-                  voucher.type == 2
+                  voucher.level == 3
                     ? `url(${baseUrl}/1111111111111111111/images/limit-edition.svg)`
                     : '',
               }"
             >
               <div class="vb-item__icon">
-                <img
-                  :src="
-                    voucher.type === 0
-                      ? `${baseUrl}/1111111111111111111/images/vb-1.svg`
-                      : voucher.type === 1
-                      ? `${baseUrl}/1111111111111111111/images/vb-2.svg`
-                      : `${baseUrl}/1111111111111111111/images/vb-special.svg`
-                  "
-                  alt=""
-                />
+                <img :src="voucher.icon" alt="" />
               </div>
               <div class="vb-item__info">
                 <div class="vb-item__head">
@@ -629,16 +591,13 @@ export default defineComponent({
                       class="text-toggle__checkmark"
                       :style="{
                         color:
-                          cart.value.discount_code === voucher.voucher_id
+                          cart.discount_code === voucher.voucher_id
                             ? '#C0C2CB'
                             : '#004377',
                       }"
                       @click="() => selectVoucher(voucher)"
-                      >{{
-                        cart.value.discount_code === voucher.voucher_id
-                          ? "Đã áp dụng"
-                          : "Áp dụng"
-                      }}</span
+                      v-if="cart.discount_code === voucher.voucher_id"
+                      >Đã áp dụng</span
                     >
                   </label>
                 </div>
@@ -652,7 +611,7 @@ export default defineComponent({
     <section
       class="section py-30"
       id="productForYou"
-      v-if="collection.value.products && collection.value.products.length > 0"
+      v-if="collection.products && collection.products.length > 0"
     >
       <div class="container-fluid">
         <div class="heading">
@@ -665,7 +624,7 @@ export default defineComponent({
                 <div class="swiper-wrapper gx-10">
                   <div
                     class="swiper-slide"
-                    v-for="(product, index) in collection.value.products"
+                    v-for="(product, index) in collection.products"
                     :key="index"
                     @click="() => viewDetail(product, false, 1)"
                   >
@@ -766,12 +725,12 @@ export default defineComponent({
           ></button>
         </div>
         <div class="modal-body py-25">
-          <div class="vb-cate" v-if="vouchersHot.length > 0">
-            <p class="vb-cate__title">Voucher hot</p>
+          <div class="vb-cate" v-if="voucherNormal.length > 0">
+            <p class="vb-cate__title">Voucher</p>
             <div class="vb-cate__content">
               <div
                 class="vb-item"
-                v-for="(voucher, index) in vouchersHot"
+                v-for="(voucher, index) in voucherNormal"
                 :key="index"
               >
                 <div class="vb-item__inner">
@@ -808,13 +767,13 @@ export default defineComponent({
                           class="text-toggle__checkmark"
                           :style="{
                             color:
-                              cart.value.discount_code === voucher.voucher_id
+                              cart.discount_code === voucher.voucher_id
                                 ? '#C0C2CB'
                                 : '#004377',
                           }"
                           @click="() => selectVoucher(voucher)"
                           >{{
-                            cart.value.discount_code === voucher.voucher_id
+                            cart.discount_code === voucher.voucher_id
                               ? "Đã áp dụng"
                               : "Áp dụng"
                           }}</span
@@ -826,12 +785,72 @@ export default defineComponent({
               </div>
             </div>
           </div>
-          <div class="vb-cate" v-if="vouchersSpecial.length > 0">
+          <div class="vb-cate" v-if="voucherHotList.length > 0">
+            <p class="vb-cate__title">Voucher hot</p>
+            <div class="vb-cate__content">
+              <div
+                class="vb-item"
+                v-for="(voucher, index) in voucherHotList"
+                :key="index"
+              >
+                <div class="vb-item__inner">
+                  <div class="vb-item__icon">
+                    <img
+                      :src="
+                        voucher.type === 0
+                          ? `${baseUrl}/1111111111111111111/images/vb-1.svg`
+                          : `${baseUrl}/1111111111111111111/images/vb-2.svg`
+                      "
+                      alt=""
+                    />
+                  </div>
+                  <div class="vb-item__info">
+                    <div class="vb-item__head">
+                      <span class="vb-item__title">{{ voucher.name }}</span>
+                    </div>
+                    <p class="vb-item__desc">
+                      {{ voucher.content }}<br />Mã: {{ voucher.code }}
+                    </p>
+                    <div class="vb-item__footer">
+                      <div class="vb-item__expiration">
+                        Ngày hết hạn {{ voucher.end_at }}
+                      </div>
+                      <label class="vb-item__apply text-toggle">
+                        <input
+                          type="checkbox"
+                          value="POLOFREE"
+                          name="vb"
+                          class="text-toggle__input"
+                          checked
+                        />
+                        <span
+                          class="text-toggle__checkmark"
+                          :style="{
+                            color:
+                              cart.discount_code === voucher.voucher_id
+                                ? '#C0C2CB'
+                                : '#004377',
+                          }"
+                          @click="() => selectVoucher(voucher)"
+                          >{{
+                            cart.discount_code === voucher.voucher_id
+                              ? "Đã áp dụng"
+                              : "Áp dụng"
+                          }}</span
+                        >
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="vb-cate" v-if="vouchersSpecialList.length > 0">
             <p class="vb-cate__title">Voucher đặc biệt</p>
             <div class="vb-cate__content">
               <div
                 class="vb-item vb-item--special"
-                v-for="(voucher, index) in vouchersSpecial"
+                v-for="(voucher, index) in vouchersSpecialList"
                 :key="index"
               >
                 <div
@@ -861,9 +880,7 @@ export default defineComponent({
                           role="progressbar"
                           :style="{
                             width: `${
-                              (cart.value.total_price /
-                                voucher.discount_limit) *
-                              100
+                              (cart.total_price / voucher.discount_limit) * 100
                             }%`,
                           }"
                           aria-valuenow="50.9"
@@ -887,13 +904,13 @@ export default defineComponent({
                           class="text-toggle__checkmark"
                           :style="{
                             color:
-                              cart.value.discount_code === voucher.voucher_id
+                              cart.discount_code === voucher.voucher_id
                                 ? '#C0C2CB'
                                 : '#004377',
                           }"
                           @click="() => selectVoucher(voucher)"
                           >{{
-                            cart.value.discount_code === voucher.voucher_id
+                            cart.discount_code === voucher.voucher_id
                               ? "Đã áp dụng"
                               : "Áp dụng"
                           }}</span
@@ -930,11 +947,7 @@ export default defineComponent({
           ></button>
         </div>
         <div class="modal-body py-25">
-          <div
-            class="m-cart"
-            v-for="(gift, index) in giftList.value"
-            :key="index"
-          >
+          <div class="m-cart" v-for="(gift, index) in giftList" :key="index">
             <div class="m-cart__img">
               <img :src="gift.image" alt="" />
             </div>
@@ -946,7 +959,11 @@ export default defineComponent({
                 </p>
                 <p class="m-cart__price">
                   0đ
-                  <del>500.000đ</del>
+                  <del
+                    >{{
+                      Intl.NumberFormat("vi-VN").format(gift.price_retail)
+                    }}đ</del
+                  >
                 </p>
               </div>
               <div class="m-cart__info__bottom">
@@ -954,11 +971,7 @@ export default defineComponent({
                   <div class="m-cart__edit__left">
                     <div class="m-cart__for">
                       Áp dụng <br />cho đơn hàng trên
-                      {{
-                        Intl.NumberFormat("vi-VN").format(
-                          giftList.value[0].range_from
-                        )
-                      }}đ
+                      {{ Intl.NumberFormat("vi-VN").format(gift.range_from) }}đ
                     </div>
                   </div>
                   <div class="m-cart__edit__right">
@@ -1008,7 +1021,7 @@ export default defineComponent({
               >
                 <div
                   class="scroll-snap__item js-gallery__item"
-                  v-for="(image, index) in packDetail.images"
+                  v-for="(image, index) in boxDetail.images"
                   :key="index"
                 >
                   <div class="ratio">
@@ -1016,24 +1029,22 @@ export default defineComponent({
                   </div>
                 </div>
               </div>
-              <p class="pack-detail__title">{{ packDetail.title }}</p>
+              <p class="pack-detail__title">{{ boxDetail.title }}</p>
               <div class="pack-detail__price">
-                {{
-                  Intl.NumberFormat("vi-VN").format(packDetail.price_retail)
-                }}đ
+                {{ Intl.NumberFormat("vi-VN").format(boxDetail.price_retail) }}đ
               </div>
               <p class="pack-detail__desc">
-                {{ packDetail.sub_title }}
+                {{ boxDetail.sub_title }}
               </p>
             </div>
           </div>
           <div class="modal-footer">
             <button
               class="btn btn-primary"
-              @click.prevent="() => onPackChange(packDetail.product_id)"
+              @click.prevent="() => onPackChange(boxDetail.product_id)"
             >
               {{
-                packDetail.product_id === packSelected
+                boxDetail.product_id === boxSelected
                   ? "Đã chọn"
                   : "Chọn hộp này"
               }}
