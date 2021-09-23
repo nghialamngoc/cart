@@ -1,20 +1,37 @@
 <script>
 import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
 import { baseUrl } from "../constant";
-import { getCancelOrder, getDeliveredOrder, getNewOrder, getCustomerInfo } from "../api/account";
+import {
+  getCancelOrder,
+  getDeliveredOrder,
+  getCustomerInfo,
+  getNewOrderWebsite,
+logOut,
+} from "../api/account";
 import { money, date } from "../helper/format";
+import Loading from "./Loading.vue";
+import ErrorDialog from "./ErrorDialog.vue";
+import { openModal } from "../helper/modal";
 
 export default defineComponent({
+  components: {
+    Loading,
+    ErrorDialog,
+  },
   setup() {
     const newOrderAll = ref([]);
     const deliveredOrderAll = ref([]);
     const canceledOrderAll = ref([]);
     const customerInfo = ref({});
+    const isLoading = ref(false);
+    const isError = ref(false);
 
     // life
     onMounted(async () => {
       await customerInfoApi();
-      await newOrder();
+      if (customerInfo.value.id) {
+        await newOrder();
+      }
     });
 
     // computed
@@ -107,32 +124,50 @@ export default defineComponent({
 
     // Method
     const newOrder = async () => {
+      if (!customerInfo.value.id) {
+        return;
+      }
+
       try {
-        const data = await getNewOrder();
+        isLoading.value = true;
+        const data = await getNewOrderWebsite();
         newOrderAll.value = data;
       } catch (err) {
-        //
+        isError.value = true;
       } finally {
+        isLoading.value = false;
       }
     };
 
     const deliveredOrder = async () => {
+      if (!customerInfo.value.id) {
+        return;
+      }
+
       try {
+        isLoading.value = true;
         const data = await getDeliveredOrder();
         deliveredOrderAll.value = data;
       } catch (err) {
-        //
+        isError.value = true;
       } finally {
+        isLoading.value = false;
       }
     };
 
     const canceledOrder = async () => {
+      if (!customerInfo.value.id) {
+        return;
+      }
+
       try {
+        isLoading.value = true;
         const data = await getCancelOrder();
         canceledOrderAll.value = data;
       } catch (err) {
-        //
+        isError.value = true;
       } finally {
+        isLoading.value = false;
       }
     };
 
@@ -150,22 +185,48 @@ export default defineComponent({
 
     const customerInfoApi = async () => {
       try {
+        isLoading.value = true;
         const data = await getCustomerInfo();
         customerInfo.value = data;
       } catch (err) {
-        //
+        isError.value = true;
       } finally {
+        isLoading.value = false;
       }
     };
 
+    const onHideError = () => {
+      isError.value = false;
+    };
+
+    const logOutClick = async () => {
+      try {
+        isLoading.value = true;
+        await logOut();
+      } catch (err) {
+        isError.value = true;
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const loginClick = () => {
+      openModal("loginModal")
+    }
+
     return {
       baseUrl,
+      isError,
+      isLoading,
       customerInfo,
       newOrderList,
       canceledOrderList,
       deliveredOrderList,
       date,
       money,
+      loginClick,
+      logOutClick,
+      onHideError,
       activeNewOrder,
       activeDeliveredOrder,
       activeCanceledOrder,
@@ -175,57 +236,144 @@ export default defineComponent({
 </script>
 
 <template>
+  <header id="header" class="header">
+    <div class="container-fluid">
+      <h1 class="header__logo">
+        <a href="trang-chu.html">
+          <img
+            :src="`${baseUrl}/1111111111111111111/images/logo.svg`"
+            alt="POLOMAN"
+          />
+        </a>
+        <span class="hide-text">POLOMAN</span>
+      </h1>
+      <div class="header__right">
+        <a
+          href="#"
+          class="header__icon js-toggle-btn"
+          data-target="#aside-search"
+        >
+          <img
+            :src="`${baseUrl}/1111111111111111111/images/search.svg`"
+            alt=""
+          />
+        </a>
+        <a href="gio-hang.html" class="header__icon" id="hd-cart">
+          <span>2</span>
+          <img :src="`${baseUrl}/1111111111111111111/images/cart.svg`" alt="" />
+        </a>
+        <a
+          href="#"
+          class="header__icon js-toggle-btn"
+          data-target="#aside-menu"
+        >
+          <img
+            :src="`${baseUrl}/1111111111111111111/images/hamburger.svg`"
+            alt=""
+          />
+        </a>
+      </div>
+    </div>
+  </header>
   <main class="main">
-    <div class="section pt-30 pb-2">
-      <div class="container-fluid">
-        <div class="user-avatar">
-          <div class="user-avatar__img ratio ratio-1x1">
-            <img
-              :src="customerInfo.image"
-              alt=""
-            />
-          </div>
-          <div class="user-avatar__heraldic">
-            <img
-              :src="`${baseUrl}/1111111111111111111/images/heraldic.svg`"
-              alt=""
-            />
-          </div>
-        </div>
-        <p class="text-8E fz-10 mt-2 mb-0 ls-20">Thông tin khách hàng</p>
-      </div>
-    </div>
-    <div class="section user-overview-section">
-      <div class="container-fluid">
-        <div class="user-overview">
-          <div class="user-overview__left">
-            <p class="user-overview__name">{{customerInfo.fullname}}</p>
-            <p class="user-overview__tel">{{customerInfo.phone}}</p>
-            <p class="user-overview__rank">
-              {{customerInfo.range}}
+    <template v-if="customerInfo.id">
+      <div class="section pt-30 pb-2">
+        <div class="container-fluid">
+          <div class="user-avatar">
+            <div class="user-avatar__img ratio ratio-1x1">
+              <img :src="customerInfo.image" alt="" />
+            </div>
+            <div class="user-avatar__heraldic">
               <img
-                :src="`${baseUrl}/1111111111111111111/images/hc.svg`"
+                :src="`${baseUrl}/1111111111111111111/images/heraldic.svg`"
                 alt=""
-                class="ms-2"
               />
-            </p>
+            </div>
           </div>
-          <div class="user-overview__right">
-            <a
-              href="thong-tin-tai-khoan.html"
-              class="btn btn-fit user-overview__edit"
-            >
-              <img
-                :src="`${baseUrl}/1111111111111111111/images/edit-8E.svg`"
-                alt=""
-                class="d-block"
-                width="20"
-              />
-            </a>
-          </div>
+          <p class="text-8E fz-10 mt-2 mb-0 ls-20">Thông tin khách hàng</p>
         </div>
       </div>
-    </div>
+      <div class="section user-overview-section">
+        <div class="container-fluid">
+          <div class="user-overview">
+            <div class="user-overview__left">
+              <p class="user-overview__name">{{ customerInfo.full_name }}</p>
+              <p class="user-overview__tel">
+                {{ customerInfo.phone_number }}
+              </p>
+              <p class="user-overview__rank">
+                {{ customerInfo.range }}
+                <img
+                  :src="`${baseUrl}/1111111111111111111/images/hc.svg`"
+                  alt=""
+                  class="ms-2"
+                />
+              </p>
+            </div>
+            <div class="user-overview__right">
+              <a
+                :href="`${baseUrl}/profile_info`"
+                class="btn btn-fit user-overview__edit"
+              >
+                <img
+                  :src="`${baseUrl}/1111111111111111111/images/edit-8E.svg`"
+                  alt=""
+                  class="d-block"
+                  width="20"
+                />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+    <template v-else>
+      <div class="section pt-30 pb-2">
+        <div class="container-fluid">
+          <div class="user-avatar user-avatar--not-login">
+            <div class="user-avatar__img ratio ratio-1x1">
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/user-avatar-default.png`"
+                alt=""
+              />
+            </div>
+          </div>
+          <p class="text-8E fz-10 mt-2 mb-0 ls-20">Thông tin khách hàng</p>
+        </div>
+      </div>
+      <div class="section user-overview-section">
+        <div class="container-fluid">
+          <div class="user-overview">
+            <div class="user-overview__left">
+              <p class="user-overview__tel">Bạn chưa đăng nhập</p>
+              <p
+                class="user-overview__login"
+                data-bs-toggle="modal"
+                data-bs-target="#loginModal"
+              >
+                Đăng nhập / Đăng ký
+                <i class="fas fa-chevron-right ms-1 fz-14"></i>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section pt-10">
+        <div class="container-fluid">
+          <div class="custom-alert">
+            <div class="custom-alert__icon">
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/icon-voucher-green.svg`"
+                alt=""
+              />
+            </div>
+            <div class="custom-alert__content">
+              Giảm 20% cho đơn hàng đầu tiên
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
     <div class="section pt-20">
       <div class="container-fluid">
         <ul
@@ -311,12 +459,15 @@ export default defineComponent({
                     <div class="order-channel__body">
                       <div class="order-channel__status">
                         <div class="order-channel__status__left">
-                          <p class="order-channel__status__code">
+                          <a
+                            class="order-channel__status__code"
+                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                          >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
-                          </p>
+                          </a>
                           <div class="order-channel__status__tags">
                             <span class="badge badge-warning-custom">
-                              {{ order.status }}
+                              {{ order.statusText }}
                             </span>
                             <span class="badge badge-warning-custom">{{
                               order.payed ? "Đã thanh toán" : "Chưa thanh toán"
@@ -334,6 +485,9 @@ export default defineComponent({
                             <div class="checkout-pd__info">
                               <p class="checkout-pd__title">
                                 {{ order.detail[0].name }}
+                                {{ order.detail[0].color }} <br />
+                                Size {{ order.detail[0].size }}
+                                {{ order.box ? `(${order.box.name})` : "" }}
                               </p>
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
@@ -349,14 +503,19 @@ export default defineComponent({
                               :key="index"
                             >
                               <div class="checkout-pd__img">
-                                <img
-                                  :src="`${baseUrl}/1111111111111111111/images/pd-1.jpg`"
-                                  alt=""
-                                />
+                                <img :src="product.image" alt="" />
                               </div>
                               <div class="checkout-pd__info">
                                 <p class="checkout-pd__title">
-                                  {{ product.name }}
+                                  {{ product.name }} {{ product.color }} <br />
+                                  {{
+                                    product.size ? `Size ${product.size}` : ""
+                                  }}
+                                  {{
+                                    order.box && product.type !== 3
+                                      ? `(${order.box.name})`
+                                      : ""
+                                  }}
                                 </p>
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
@@ -416,7 +575,12 @@ export default defineComponent({
                                 <p class="mb-0 fw-semi">
                                   {{
                                     date(
-                                      new Date(Date.now() + 3600 * 1000 * 24),
+                                      new Date(
+                                        new Date(
+                                          orderDetail.create_at
+                                        ).getTime() +
+                                          3600 * 1000 * 24
+                                      ),
                                       "dd/MM"
                                     )
                                   }}
@@ -424,7 +588,10 @@ export default defineComponent({
                                   {{
                                     date(
                                       new Date(
-                                        Date.now() + 3600 * 1000 * 24 * 4
+                                        new Date(
+                                          orderDetail.create_at
+                                        ).getTime() +
+                                          3600 * 1000 * 24 * 4
                                       ),
                                       "dd/MM"
                                     )
@@ -498,7 +665,8 @@ export default defineComponent({
                           <strong>{{ money(order.total_price) }}</strong>
                         </p>
                         <p class="order-channel__footer__txt">
-                          Ngày mua hàng: {{ order.create_at }}
+                          Ngày mua hàng:
+                          {{ date(order.create_at, "dd-MM-yyyy") }}
                         </p>
                       </div>
                       <div class="order-channel__footer__right">
@@ -533,6 +701,15 @@ export default defineComponent({
               v-if="index < newOrderList.length - 1"
             ></div>
           </template>
+          <div class="empty-cart" v-if="newOrderList.length == 0">
+            <div class="empty-cart__icon">
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/empty-cart.svg`"
+                alt=""
+              />
+            </div>
+            <p class="empty-cart__title">Giỏ hàng của bạn đang trống</p>
+          </div>
         </div>
         <div
           class="tab-pane fade"
@@ -556,9 +733,12 @@ export default defineComponent({
                     <div class="order-channel__body">
                       <div class="order-channel__status">
                         <div class="order-channel__status__left">
-                          <p class="order-channel__status__code">
+                          <a
+                            class="order-channel__status__code"
+                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                          >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
-                          </p>
+                          </a>
                           <div class="order-channel__status__tags">
                             <span class="badge badge-success-custom"
                               >Đã nhận hàng ({{ order.update_at }})</span
@@ -576,6 +756,9 @@ export default defineComponent({
                             <div class="checkout-pd__info">
                               <p class="checkout-pd__title">
                                 {{ order.detail[0].name }}
+                                {{ order.detail[0].color }} <br />
+                                Size {{ order.detail[0].size }}
+                                {{ order.box ? `(${order.box.name})` : "" }}
                               </p>
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
@@ -591,14 +774,19 @@ export default defineComponent({
                               :key="index"
                             >
                               <div class="checkout-pd__img">
-                                <img
-                                  :src="`${baseUrl}/1111111111111111111/images/pd-1.jpg`"
-                                  alt=""
-                                />
+                                <img :src="product.image" alt="" />
                               </div>
                               <div class="checkout-pd__info">
                                 <p class="checkout-pd__title">
-                                  {{ product.name }}
+                                  {{ product.name }} {{ product.color }} <br />
+                                  {{
+                                    product.size ? `Size ${product.size}` : ""
+                                  }}
+                                  {{
+                                    order.box && product.type !== 3
+                                      ? `(${order.box.name})`
+                                      : ""
+                                  }}
                                 </p>
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
@@ -775,6 +963,15 @@ export default defineComponent({
               v-if="index < newOrderList.length - 1"
             ></div>
           </template>
+          <div class="empty-cart" v-if="deliveredOrderList.length == 0">
+            <div class="empty-cart__icon">
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/empty-cart.svg`"
+                alt=""
+              />
+            </div>
+            <p class="empty-cart__title">Giỏ hàng của bạn đang trống</p>
+          </div>
         </div>
         <div
           class="tab-pane fade"
@@ -798,9 +995,12 @@ export default defineComponent({
                     <div class="order-channel__body">
                       <div class="order-channel__status">
                         <div class="order-channel__status__left">
-                          <p class="order-channel__status__code">
+                          <a
+                            class="order-channel__status__code"
+                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                          >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
-                          </p>
+                          </a>
                           <div class="order-channel__status__tags">
                             <span class="badge badge-danger-custom"
                               >Đã hủy</span
@@ -818,6 +1018,9 @@ export default defineComponent({
                             <div class="checkout-pd__info">
                               <p class="checkout-pd__title">
                                 {{ order.detail[0].name }}
+                                {{ order.detail[0].color }} <br />
+                                Size {{ order.detail[0].size }}
+                                {{ order.box ? `(${order.box.name})` : "" }}
                               </p>
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
@@ -833,14 +1036,19 @@ export default defineComponent({
                               :key="index"
                             >
                               <div class="checkout-pd__img">
-                                <img
-                                  :src="`${baseUrl}/1111111111111111111/images/pd-1.jpg`"
-                                  alt=""
-                                />
+                                <img :src="product.image" alt="" />
                               </div>
                               <div class="checkout-pd__info">
                                 <p class="checkout-pd__title">
-                                  {{ product.name }}
+                                  {{ product.name }} {{ product.color }} <br />
+                                  {{
+                                    product.size ? `Size ${product.size}` : ""
+                                  }}
+                                  {{
+                                    order.box && product.type !== 3
+                                      ? `(${order.box.name})`
+                                      : ""
+                                  }}
                                 </p>
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
@@ -871,7 +1079,7 @@ export default defineComponent({
                       <div class="order-detail">
                         <div class="order-detail__title">
                           THÔNG TIN GIAO HÀNG
-                          <span class="badge badge-blue-custom">Mặc định</span>
+                          <!-- <span class="badge badge-blue-custom">Mặc định</span> -->
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
@@ -1017,6 +1225,15 @@ export default defineComponent({
               v-if="index < newOrderList.length - 1"
             ></div>
           </template>
+          <div class="empty-cart" v-if="deliveredOrderList.length == 0">
+            <div class="empty-cart__icon">
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/empty-cart.svg`"
+                alt=""
+              />
+            </div>
+            <p class="empty-cart__title">Giỏ hàng của bạn đang trống</p>
+          </div>
         </div>
       </div>
     </div>
@@ -1131,23 +1348,33 @@ export default defineComponent({
         <div class="mt-35">
           <button
             type="button"
-            class="
-              btn btn-icon-start btn-outline-37-white
-              fz-14
-              fw-semi
-              w-100
-              p-2
-            "
+            class="btn btn-dark fz-14 fw-semi w-100 p-2"
+            data-bs-toggle="modal"
+            data-bs-target="#loginModal"
+            v-if="!customerInfo.id"
           >
-            <img
-              :src="`${baseUrl}/1111111111111111111/images/sign-out-37.svg`"
-              alt=""
-              width="18"
-            />
+            Đăng nhập
+          </button>
+          <button
+            v-else
+            type="button"
+            class="btn btn-dark fz-14 fw-semi w-100 p-2"
+            @click="logOutClick"
+          >
             Đăng xuất
           </button>
         </div>
       </div>
     </div>
   </main>
+
+  <!-- LOADING MODAL -->
+  <Loading :isLoading="isLoading"></Loading>
+
+  <ErrorDialog
+    :isOpen="isError"
+    message="Có lỗi xảy ra. Vui lòng thử lại!"
+    :hideError="onHideError"
+    title="Lỗi!"
+  />
 </template>

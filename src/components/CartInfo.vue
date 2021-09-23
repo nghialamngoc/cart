@@ -258,7 +258,9 @@ export default defineComponent({
               <button
                 class="btn-close m-cart__delete"
                 style="outline: none; box-shadow: none"
-                @click="() => onQuantityChange(product.product_id, -product.quantity)"
+                @click="
+                  () => onQuantityChange(product.product_id, -product.quantity)
+                "
               ></button>
             </div>
             <div class="m-cart__info__center">
@@ -659,14 +661,26 @@ export default defineComponent({
                           {{ product.product_title }}
                         </p>
                         <p class="pd-item__bottom__price">
-                          <del class="pd-item__bottom__price__old"
+                          <del
+                            class="pd-item__bottom__price__old"
+                            v-if="product.price_sale != 0"
                             >{{
                               Intl.NumberFormat("vi-VN").format(
                                 product.price_retail
                               )
                             }}đ</del
                           >
-                          <span class="pd-item__bottom__price__new">
+                          <span class="pack-item__price__number">
+                            {{
+                              Intl.NumberFormat("vi-VN").format(
+                                product.price_retail
+                              )
+                            }}đ
+                          </span>
+                          <span
+                            class="pd-item__bottom__price__new"
+                            v-if="product.price_sale != 0"
+                          >
                             {{
                               Intl.NumberFormat("vi-VN").format(
                                 product.price_sale

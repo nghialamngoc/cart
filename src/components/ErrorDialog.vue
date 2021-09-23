@@ -1,13 +1,10 @@
 <script>
 import { defineComponent } from "@vue/runtime-core";
+import { baseUrl } from "../constant";
 
 export default defineComponent({
   props: ["isOpen", "hideError", "message", "title"],
   setup() {
-    const baseUrl = !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://quang.tvtsolutions.com";
-
     return {
       baseUrl,
     };

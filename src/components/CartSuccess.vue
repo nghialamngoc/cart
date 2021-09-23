@@ -14,7 +14,7 @@ export default defineComponent({
     //state
     const note = ref("");
     const orderId = computed(() => store.state.orderId);
-    const paymentMethod = computed(() => store.state.paymentMethod);
+    const paymentMethodType = computed(() => store.getters.paymentMethodType);
     const orderExperience = computed(() => store.state.orderExperience);
     const billingAddress = computed(() => store.state.billingAddress);
     const shippingAddress = computed(() => store.state.shippingAddress);
@@ -66,18 +66,28 @@ export default defineComponent({
       }
     };
 
+    const goToProfilePage = () => {
+      location.replace(`${baseUrl}/profile`);
+    };
+
+    const goToHomePage = () => {
+      location.replace(`${baseUrl}`);
+    };
+
     return {
       note,
       baseUrl,
       subPrice,
       isDisable,
       shippingAddress,
-      paymentMethod,
+      paymentMethodType,
       orderExperience,
       orderId,
       money,
       setReport,
       addReport,
+      goToHomePage,
+      goToProfilePage,
     };
   },
 });
@@ -89,7 +99,10 @@ export default defineComponent({
       <div class="container-fluid">
         <div class="order-success__head">
           <div class="order-success__head__icon">
-            <img :src="`${baseUrl}/1111111111111111111/images/success.svg`" alt="" />
+            <img
+              :src="`${baseUrl}/1111111111111111111/images/success.svg`"
+              alt=""
+            />
           </div>
           <h2 class="order-success__head__title">ĐẶT HÀNG THÀNH CÔNG !!</h2>
         </div>
@@ -137,9 +150,9 @@ export default defineComponent({
               <div class="col-4">Thanh toán:</div>
               <div class="col-8 fw-semi">
                 {{
-                  paymentMethod === 1
+                  paymentMethodType === 1
                     ? "Tiền mặt"
-                    : paymentMethod === 2
+                    : paymentMethodType === 2
                     ? "Momo"
                     : "VNPay"
                 }}
@@ -163,18 +176,20 @@ export default defineComponent({
           <div class="mt-15">
             <div class="row row-cols-2 gx-1">
               <div class="col">
-                <a
-                  href="#"
+                <div
                   class="btn btn-outline-primary w-100 fz-14 p-2 h-100"
-                  >Theo dõi hơn hàng</a
+                  @click="goToProfilePage"
                 >
+                  Theo dõi hơn hàng
+                </div>
               </div>
               <div class="col">
-                <a
-                  href="#"
+                <div
                   class="btn btn-primary w-100 fz-14 fw-semi p-2 h-100"
-                  >Quay về trang chủ</a
+                  @click="goToHomePage"
                 >
+                  Quay về trang chủ
+                </div>
               </div>
             </div>
           </div>
@@ -515,7 +530,11 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-body py-25">
           <div class="thank-box">
-            <img class="thank-box__icon" :src="`${baseUrl}/1111111111111111111/images/cuoi-deu.svg`" alt="" />
+            <img
+              class="thank-box__icon"
+              :src="`${baseUrl}/1111111111111111111/images/cuoi-deu.svg`"
+              alt=""
+            />
             <p class="thank-box__title">POLOMAN CẢM ƠN!</p>
             <p class="thank-box__sub">
               Đánh giá của bạn sẽ giúp chúng tôi <br />cải thiện trang web tốt

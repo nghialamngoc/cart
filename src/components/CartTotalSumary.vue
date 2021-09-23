@@ -17,17 +17,17 @@ export default defineComponent({
     const quickShippingType = computed(() => store.state.quickShippingType);
     const billingAddress = computed(() => store.state.billingAddress);
     const shippingAddress = computed(() => store.state.shippingAddress);
-    const paymentMethod = computed(() => store.state.paymentMethod);
     const isValidShippingAddress = computed(
       () => store.getters.isValidShippingAddress
     );
     const isFreeShip = computed(() => store.getters.isFreeShip);
-    const shippingPrice = computed(() => store.state.shippingPrice);
+    const shippingPrice = computed(() => store.getters.shippingPrice);
     const totalPrice = computed(() => store.getters.totalPrice);
     const subPrice = computed(() => store.getters.subPrice);
     const discount = computed(() => store.getters.discount);
     const bankCode = computed(() => store.state.bankCode);
-    const paymentMethods = computed(() => store.state.paymentMethods);
+    const paymentInfo = computed(() => store.getters.paymentInfo);
+    const methodType = computed(() => store.getters.paymentMethodType);
 
     const onSubmit = async () => {
       if (step.value === 1) {
@@ -37,6 +37,13 @@ export default defineComponent({
 
       if (step.value === 2) {
         if (isValidShippingAddress.value && !isEdit.value) {
+          if (shippingType.value == 0) {
+            store.dispatch(
+            "setError",
+            "Vui lòng chọn phương thức giao hàng"
+          );
+            return;
+          }
           await createOrder();
         } else {
           store.dispatch(
@@ -50,9 +57,6 @@ export default defineComponent({
     const createOrder = async () => {
       const data = cart.value;
       try {
-        const payment = paymentMethods.value.find(
-          (x) => x.payment_id === paymentMethod.value
-        );
         const payload = {
           cash: 0,
           cod: data.total_price - data.discount,
@@ -87,8 +91,9 @@ export default defineComponent({
             ? billingAddress.value.customer_id
             : "0",
           status: 1,
-          payment_method_type: payment.type || 0,
+          payment_method_type: methodType.value,
           bank_code: bankCode.value,
+          payment_info: paymentInfo.value,
           order_detail: data.detail.map((x) => {
             return {
               name: x.title,
@@ -180,7 +185,7 @@ export default defineComponent({
         <button
           @click="onSubmit"
           class="btn btn-primary fz-14 fw-semi p-2 w-100"
-          :disabled="!cart.detail || cart.detail.length <= 0"
+          :disabled="subPrice == 0"
         >
           {{ step == 1 ? "Mua hàng" : "Đặt hàng" }}
         </button>

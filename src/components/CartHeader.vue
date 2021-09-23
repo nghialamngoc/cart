@@ -1,14 +1,11 @@
 <script>
 import { defineComponent } from "@vue/runtime-core";
+import { baseUrl } from "../constant";
 
 export default defineComponent({
   props: ["step"],
   emits: ["onChangeStep"],
   setup(props, { emit }) {
-    const baseUrl = !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://quang.tvtsolutions.com";
-
     const goBack = () => {
       if (props.step === 2) {
         emit("onChangeStep", 1);
@@ -28,7 +25,11 @@ export default defineComponent({
     <div class="container-fluid">
       <h1 class="header__logo">
         <div class="fz-14" @click="goBack">
-          <i class="fas fa-chevron-left" style="margin-right: 3px" v-if="step != 3"></i>
+          <i
+            class="fas fa-chevron-left"
+            style="margin-right: 3px"
+            v-if="step != 3"
+          ></i>
           GIỎ HÀNG
         </div>
       </h1>

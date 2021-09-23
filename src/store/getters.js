@@ -53,7 +53,7 @@ export default {
 
   validVoucherList(state) {
     if (state.voucherList.length > 0) {
-      return [state.voucherList[0]]
+      return [state.voucherList[0]];
     }
 
     return [];
@@ -67,14 +67,14 @@ export default {
     return state.cart.total_price;
   },
 
-  subPrice(state) {
+  subPrice(state, getters) {
     if (!state.cart.cart_id) {
       return 0;
     }
 
     let result = state.cart.total_price;
 
-    return result + state.shippingPrice - state.cart.discount;
+    return result + getters.shippingPrice - state.cart.discount;
   },
 
   discount(state) {
@@ -90,12 +90,10 @@ export default {
       return false;
     }
 
-    const voucherFreeShip = state.voucherList.value.find((x) => x.type === 1);
+    const voucherFreeShip = state.voucherList.find((x) => x.type === 1);
 
     if (voucherFreeShip) {
-      return (
-        voucherFreeShip.voucher_id === cart.value.discount_code
-      );
+      return voucherFreeShip.voucher_id === state.cart.discount_code;
     }
 
     return false;
@@ -131,19 +129,6 @@ export default {
     return true;
   },
 
-  isFreeShip(state) {
-    const voucherFreeShip = state.voucherList.find((x) => x.type === 0);
-
-    if (voucherFreeShip) {
-      return (
-        voucherFreeShip.voucher_id === state.cart.discount_code &&
-        voucherFreeShip.discount === 0
-      );
-    }
-
-    return false;
-  },
-
   boxName(state) {
     if (!state.cart || !state.cart.detail) {
       return "";
@@ -155,5 +140,50 @@ export default {
     }
 
     return "";
+  },
+
+  paymentMethodType(state) {
+    if (state.paymentMethod && state.paymentMethods) {
+      const method = state.paymentMethods.find(
+        (x) => x.payment_id === state.paymentMethod
+      );
+      if (method) {
+        return method.type;
+      }
+    }
+
+    return 0;
+  },
+
+  paymentInfo(state) {
+    if (state.paymentMethod && state.paymentMethods) {
+      const method = state.paymentMethods.find(
+        (x) => x.payment_id === state.paymentMethod
+      );
+      if (method) {
+        return `${method.name.trim()} - ${method.instruction.trim()}`;
+      }
+    }
+
+    return "";
+  },
+
+  shippingPrice(state, getters) {
+    let result = 0;
+    if (state.shippingType == 1) {
+      result = getters.isFreeShip ? 0 : state.shippingStandard.shipping_price;
+    }
+
+    if (state.shippingType == 2) {
+      if (state.quickShippingType == 2) {
+        result = 25000;
+      }
+
+      if (state.quickShippingType == 3) {
+        result = 30000;
+      }
+    }
+
+    return result;
   },
 };

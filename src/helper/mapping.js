@@ -2,7 +2,41 @@ export const mappingStatus = (status) => {
   let result = "";
   switch (status) {
     case 1:
+      result = "Mới";
+      break;
+    case 2:
+      result = "Đã xác nhận";
+      break;
+    case 3:
+      result = "Chờ hàng";
+      break;
+    case 5:
+      result = "Delay lấy hàng";
+      break;
+    case 6:
+      result = "Đã gửi hàng";
+      break;
+    case 7:
+      result = "Đang giao hàng";
+      break;
+    case 8:
+      result = "Delay giao hàng";
+      break;
+    case 8:
       result = "Chờ lấy hàng";
+      break;
+    case 9:
+      result = "Giao thành công";
+    case 10:
+      result = "Giao 1 phần";
+    case 11:
+      result = "Đang hoàn";
+    case 12:
+      result = "Đã nhận hoàn";
+    case 13:
+      result = "Đã đối soát";
+    case 19:
+      result = "Đã huỷ";
       break;
 
     default:

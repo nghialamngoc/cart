@@ -6,13 +6,11 @@ import {
   ref,
 } from "@vue/runtime-core";
 import axios from "axios";
+import { baseUrl } from "../constant";
 
 export default defineComponent({
   emits: ["onSelect"],
   setup(props, { emit }) {
-    const baseUrl = !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://quang.tvtsolutions.com";
     const provinceList = ref([]);
     const searchString = ref("");
 

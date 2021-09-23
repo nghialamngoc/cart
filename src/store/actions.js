@@ -48,6 +48,10 @@ export default {
       const data = await getCartInfo();
       commit("setCart", data);
 
+      if (data.total_price === 0) {
+        commit("setStep", 1);
+      }
+
       // get gift list
       await dispatch("getGiftList");
     } catch (err) {
@@ -279,8 +283,8 @@ export default {
         commit("setShippingStandard", data[0]);
         commit("setShippingType", 1);
       } else {
-        commit("setShippingStandard", 2);
-        commit("setShippingType", {});
+        commit("setShippingStandard", {});
+        commit("setShippingType", 0);
       }
     } catch (err) {
       console.log(err);

@@ -45,6 +45,7 @@ export default defineComponent({
     const note = computed(() => store.state.note);
     const boxName = computed(() => store.getters.boxName);
     const paymentMethods = computed(() => store.state.paymentMethods);
+    const methodType = computed(() => store.getters.paymentMethodType);
 
     const setEdit = () => {
       shippingAddressEdit.value = {
@@ -65,26 +66,6 @@ export default defineComponent({
       if (!isValidShippingAddress.value) {
         store.commit("setEdit", true);
       }
-    });
-
-    // watch
-    watch([shippingType, quickShippingType], () => {
-      let result = 0;
-      if (shippingType.value == 1) {
-        result = isFreeShip.value ? 0 : shippingStandard.value.shipping_price;
-      }
-
-      if (shippingType.value == 2) {
-        if (quickShippingType.value == 1) {
-          result = 25000;
-        }
-
-        if (quickShippingType.value == 2) {
-          result = 30000;
-        }
-      }
-
-      store.commit("setShippingPrice", result);
     });
 
     const changeAddress = async () => {
@@ -138,7 +119,7 @@ export default defineComponent({
         const data = await getPaymentMethodList();
 
         if (Array.isArray(data) && data.length > 0) {
-          store.commit("setPaymentMethods", data)
+          store.commit("setPaymentMethods", data);
           store.commit("setPaymentMethod", data[0].payment_id);
         }
       } catch (err) {
@@ -197,7 +178,7 @@ export default defineComponent({
       store.commit("setShippingType", value);
 
       if (value == 2) {
-        store.commit("setQuickShippingType", 1);
+        store.commit("setQuickShippingType", 2);
       }
     };
 
@@ -224,6 +205,7 @@ export default defineComponent({
       baseUrl,
       boxName,
       bankCode,
+      methodType,
       isFreeShip,
       shippingType,
       paymentMethod,
@@ -434,6 +416,7 @@ export default defineComponent({
           <div class="checkout__head">
             <h2 class="checkout__head__title">PHƯƠNG THỨC GIAO HÀNG</h2>
           </div>
+
           <div class="checkout__body checkout__body--outside">
             <label class="box-picker" v-if="shippingStandard.shipping_id">
               <input
@@ -536,13 +519,10 @@ export default defineComponent({
                   </div>
                 </div>
                 <div class="select-transport-unit">
-                  <label class="box-picker box-picker--2">
-                    <input
-                      type="radio"
-                      class="box-picker__input"
-                      :checked="quickShippingType === 2"
-                      @click="() => changeQuickShippingType(2)"
-                    />
+                  <label
+                    class="box-picker box-picker--2"
+                    @click="() => changeQuickShippingType(2)"
+                  >
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
                         <div class="col-7">
@@ -571,7 +551,7 @@ export default defineComponent({
                           </div>
                         </div>
                         <div class="col-1 text-end">
-                          <div class="box-picker__checkmark__check">
+                          <div v-if="quickShippingType === 2">
                             <img
                               :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
                               alt=""
@@ -581,13 +561,10 @@ export default defineComponent({
                       </div>
                     </div>
                   </label>
-                  <label class="box-picker box-picker--2">
-                    <input
-                      type="radio"
-                      class="box-picker__input"
-                      :checked="quickShippingType === 3"
-                      @click="() => changeQuickShippingType(3)"
-                    />
+                  <label
+                    class="box-picker box-picker--2"
+                    @click="() => changeQuickShippingType(3)"
+                  >
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
                         <div class="col-7">
@@ -616,7 +593,7 @@ export default defineComponent({
                           </div>
                         </div>
                         <div class="col-1 text-end">
-                          <div class="box-picker__checkmark__check">
+                          <div v-if="quickShippingType === 3">
                             <img
                               :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
                               alt=""
@@ -688,7 +665,7 @@ export default defineComponent({
                   </div>
                 </div>
               </label>
-              <template v-if="paymentMethod === 3">
+              <template v-if="methodType === 3">
                 <select
                   :value="bankCode"
                   @change="(e) => onBankChange(e.target.value)"

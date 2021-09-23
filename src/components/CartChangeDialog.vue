@@ -4,13 +4,7 @@ import { defineComponent } from "@vue/runtime-core";
 export default defineComponent({
   props: ["isOpen", "hideError"],
   setup() {
-    const baseUrl = !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://quang.tvtsolutions.com";
-
-    return {
-      baseUrl,
-    };
+    return {};
   },
 });
 </script>

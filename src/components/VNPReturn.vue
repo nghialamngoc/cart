@@ -16,16 +16,15 @@ export default defineComponent({
     const isLoading = ref(false);
     const note = ref("");
     const order = ref({
-      phone_number: "123",
-      name: "1234",
-      total_price: "3000",
+      phone_number: "",
+      name: "",
+      total_price: "",
     });
     const rate = ref("");
 
     onMounted(async () => {
       const urlSearchParams = new URLSearchParams(window.location.search);
       const { id } = Object.fromEntries(urlSearchParams.entries());
-      console.log(id);
 
       if (!id) {
         //location.replace(baseUrl);
@@ -86,6 +85,14 @@ export default defineComponent({
       }
     };
 
+    const goToProfilePage = () => {
+      location.replace(`${baseUrl}/profile`);
+    };
+
+    const goToHomePage = () => {
+      location.replace(`${baseUrl}`);
+    };
+
     return {
       note,
       rate,
@@ -96,6 +103,8 @@ export default defineComponent({
       money,
       setReport,
       addReport,
+      goToProfilePage,
+      goToHomePage,
     };
   },
 });
@@ -162,7 +171,9 @@ export default defineComponent({
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Thanh toán:</div>
-              <div class="col-8 fw-semi">VNPay</div>
+              <div class="col-8 fw-semi">
+                {{ order.payment_method_type === 2 ? "Momo" : "VNPay" }}
+              </div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Trạng thái:</div>
@@ -182,18 +193,20 @@ export default defineComponent({
           <div class="mt-15">
             <div class="row row-cols-2 gx-1">
               <div class="col">
-                <a
-                  href="#"
+                <div
                   class="btn btn-outline-primary w-100 fz-14 p-2 h-100"
-                  >Theo dõi hơn hàng</a
+                  @click="goToProfilePage"
                 >
+                  Theo dõi hơn hàng
+                </div>
               </div>
               <div class="col">
-                <a
-                  href="#"
+                <div
                   class="btn btn-primary w-100 fz-14 fw-semi p-2 h-100"
-                  >Quay về trang chủ</a
+                  @click="goToHomePage"
                 >
+                  Quay về trang chủ
+                </div>
               </div>
             </div>
           </div>

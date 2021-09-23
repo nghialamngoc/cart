@@ -1,14 +1,12 @@
 <script>
 import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
 import axios from "axios";
+import { baseUrl } from "../constant";
 
 export default defineComponent({
   props: ["district_id"],
   emits: ["onSelect", "goBack"],
   setup(props, { emit }) {
-    const baseUrl = !window.location.origin.includes("localhost")
-      ? window.location.origin
-      : "https://quang.tvtsolutions.com";
     const communeList = ref([]);
     const searchString = ref("");
 
