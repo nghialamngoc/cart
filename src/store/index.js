@@ -21,7 +21,7 @@ const store = createStore({
     shippingAddress: {},
     shippingStandard: {},
     shippingType: 0,
-    quickShippingType: 2,
+    quickShippingType: 0,
     paymentMethod: 1,
     note: "",
     orderId: "",
@@ -37,6 +37,8 @@ const store = createStore({
   getters: getters,
   mutations: mutations,
   actions: actions,
+  ahamove: {},
+  grap: {},
 });
 
 export default store;

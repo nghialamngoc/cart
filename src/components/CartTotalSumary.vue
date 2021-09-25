@@ -37,11 +37,11 @@ export default defineComponent({
 
       if (step.value === 2) {
         if (isValidShippingAddress.value && !isEdit.value) {
-          if (shippingType.value == 0) {
-            store.dispatch(
-            "setError",
-            "Vui lòng chọn phương thức giao hàng"
-          );
+          if (
+            shippingType.value == 0 ||
+            (shippingType.value == 2 && quickShippingType.value == 0)
+          ) {
+            store.dispatch("setError", "Vui lòng chọn phương thức giao hàng");
             return;
           }
           await createOrder();

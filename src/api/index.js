@@ -181,3 +181,13 @@ export const getPaymentMethodList = async (id) => {
     return Promise.reject(err);
   }
 };
+
+export const getAhamoShippingFee = async (payload) => {
+  try {
+    const { data } = await axios.post(`${baseUrl}/delivery/ahamove/api/v1/order/estimated-fee`, payload);
+
+    return data
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};

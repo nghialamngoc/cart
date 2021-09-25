@@ -176,11 +176,11 @@ export default {
 
     if (state.shippingType == 2) {
       if (state.quickShippingType == 2) {
-        result = 25000;
+        result = state.grap.total_price;
       }
 
       if (state.quickShippingType == 3) {
-        result = 30000;
+        result = state.ahamove.total_price;
       }
     }
 

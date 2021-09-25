@@ -16,7 +16,7 @@ export default defineComponent({
   <!-- LOADING MODAL -->
   <div class="x-modal" v-if="isLoading">
     <div class="x-modal__mark"></div>
-    <div class="x-modal__content" style="width: 100px">
+    <div class="x-loading__content" style="width: 100px">
       <div class="thank-box">
         <img
           class="thank-box__icon"
@@ -49,15 +49,11 @@ export default defineComponent({
   background: #bfc1cb;
 }
 
-.x-modal__content {
+.x-loading__content {
   background: white;
   opacity: 1;
   z-index: 2;
   border-radius: 10px;
-}
-
-.x-loading__content {
-  flex-grow: 1;
 }
 
 .thank-box__icon {

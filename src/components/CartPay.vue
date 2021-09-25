@@ -1,16 +1,9 @@
 <script>
-import {
-  computed,
-  defineComponent,
-  onMounted,
-  reactive,
-  ref,
-  watch,
-} from "@vue/runtime-core";
+import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
 import SelectCity from "./SelectCity.vue";
 import SelectDistrict from "./SelectDistrict.vue";
 import SelectCommune from "./SelectCommune.vue";
-import { date } from "../helper/format";
+import { money, date } from "../helper/format";
 import { closeModal, openModal } from "../helper/modal";
 import { useStore } from "vuex";
 import { baseUrl } from "../constant";
@@ -46,6 +39,8 @@ export default defineComponent({
     const boxName = computed(() => store.getters.boxName);
     const paymentMethods = computed(() => store.state.paymentMethods);
     const methodType = computed(() => store.getters.paymentMethodType);
+    const ahamove = computed(() => store.state.ahamove);
+    const grap = computed(() => store.state.grap);
 
     const setEdit = () => {
       shippingAddressEdit.value = {
@@ -105,6 +100,11 @@ export default defineComponent({
 
         await store.dispatch("getCart");
         await store.dispatch("setDefaultShippingAddress");
+        await store.dispatch("ahomoveShippingFee");
+
+        if (!ahamove.value || !ahamove.value.total_price) {
+          store.commit("setQuickShippingType", 0);
+        }
 
         store.commit("setEdit", false);
       } catch (err) {
@@ -174,15 +174,41 @@ export default defineComponent({
       openModal("districtModal");
     };
 
-    const changeShippingType = (value) => {
+    const changeShippingType = async (value) => {
       store.commit("setShippingType", value);
 
       if (value == 2) {
-        store.commit("setQuickShippingType", 2);
+        await store.dispatch("ahomoveShippingFee");
       }
     };
 
     const changeQuickShippingType = (value) => {
+      if (value === 2) {
+        if (!grap.value || !grap.value.distance || !grap.value.total_price) {
+          store.commit(
+            "setError",
+            "Phương thức giao hàng không khả dụng. Bạn vui lòng chọn phương thức khác hoặc nhập chính xác thông tin nhận hàng!"
+          );
+
+          return;
+        }
+      }
+
+      if (value === 3) {
+        if (
+          !ahamove.value ||
+          !ahamove.value.distance ||
+          !ahamove.value.total_price
+        ) {
+          store.commit(
+            "setError",
+            "Phương thức giao hàng không khả dụng. Bạn vui lòng chọn phương thức khác hoặc nhập chính xác thông tin nhận hàng!"
+          );
+
+          return;
+        }
+      }
+
       store.commit("setQuickShippingType", value);
     };
 
@@ -199,11 +225,13 @@ export default defineComponent({
     };
 
     return {
+      grap,
       cart,
       note,
       isEdit,
       baseUrl,
       boxName,
+      ahamove,
       bankCode,
       methodType,
       isFreeShip,
@@ -217,6 +245,7 @@ export default defineComponent({
       shippingAddressEdit,
 
       date,
+      money,
       setEdit,
       openModal,
       changeNote,
@@ -525,7 +554,13 @@ export default defineComponent({
                   >
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
-                        <div class="col-7">
+                        <div
+                          :class="
+                            grap && grap.distance && grap.total_price
+                              ? 'col-7'
+                              : 'col-12'
+                          "
+                        >
                           <div class="unit-item">
                             <div class="unit-item__logo">
                               <img
@@ -535,19 +570,32 @@ export default defineComponent({
                             </div>
                             <div class="unit-item__info">
                               <p class="unit-item__title">Grab</p>
-                              <p class="unit-item__desc">
-                                Phí ship: <span class="fw-semi">25.000</span>
+                              <p
+                                class="unit-item__desc"
+                                v-if="grap && grap.distance && grap.total_price"
+                              >
+                                Phí ship:
+                                <span class="fw-semi">{{
+                                  money(grap.total_price)
+                                }}</span>
+                              </p>
+                              <p class="unit-item__desc" v-else>
+                                Phương thức vận chuyển chưa khả dụng với thông
+                                tin nhận hàng
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div class="col-4">
+                        <div
+                          class="col-4"
+                          v-if="grap && grap.distance && grap.total_price"
+                        >
                           <div class="distance">
                             <img
                               :src="`${baseUrl}/1111111111111111111/images/distance.svg`"
                               alt=""
                             />
-                            20km
+                            {{ grap.distance }}km
                           </div>
                         </div>
                         <div class="col-1 text-end">
@@ -567,7 +615,13 @@ export default defineComponent({
                   >
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
-                        <div class="col-7">
+                        <div
+                          :class="
+                            ahamove && ahamove.distance && ahamove.total_price
+                              ? 'col-7'
+                              : 'col-12'
+                          "
+                        >
                           <div class="unit-item">
                             <div class="unit-item__logo">
                               <img
@@ -576,20 +630,39 @@ export default defineComponent({
                               />
                             </div>
                             <div class="unit-item__info">
-                              <p class="unit-item__title">Grab</p>
-                              <p class="unit-item__desc">
-                                Phí ship: <span class="fw-semi">25.000</span>
+                              <p class="unit-item__title">Ahamove</p>
+                              <p
+                                class="unit-item__desc"
+                                v-if="
+                                  ahamove &&
+                                  ahamove.distance &&
+                                  ahamove.total_price
+                                "
+                              >
+                                Phí ship:
+                                <span class="fw-semi">{{
+                                  money(ahamove.total_price)
+                                }}</span>
+                              </p>
+                              <p class="unit-item__desc" v-else>
+                                Phương thức vận chuyển chưa khả dụng với thông
+                                tin nhận hàng
                               </p>
                             </div>
                           </div>
                         </div>
-                        <div class="col-4">
+                        <div
+                          class="col-4"
+                          v-if="
+                            ahamove && ahamove.distance && ahamove.total_price
+                          "
+                        >
                           <div class="distance">
                             <img
                               :src="`${baseUrl}/1111111111111111111/images/distance.svg`"
                               alt=""
                             />
-                            20km
+                            {{ ahamove.distance }}km
                           </div>
                         </div>
                         <div class="col-1 text-end">

@@ -203,6 +203,8 @@ export default defineComponent({
       try {
         isLoading.value = true;
         await logOut();
+
+        location.reload()
       } catch (err) {
         isError.value = true;
       } finally {

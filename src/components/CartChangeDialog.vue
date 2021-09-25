@@ -50,10 +50,6 @@ export default defineComponent({
   border-radius: 10px;
 }
 
-.x-loading__content {
-  flex-grow: 1;
-}
-
 .thank-box__icon {
   width: 50px;
   margin: 10px;

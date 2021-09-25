@@ -2,6 +2,7 @@ import {
   addProductToCart,
   addVoucher,
   addVoucherCode,
+  getAhamoShippingFee,
   getBoxList,
   getCartInfo,
   getCollection,
@@ -288,6 +289,36 @@ export default {
       }
     } catch (err) {
       console.log(err);
+    } finally {
+      commit("setLoading", false);
+    }
+  },
+
+  async ahomoveShippingFee({ commit, state }) {
+    if (!state.shippingAddress.address || !state.shippingAddress.name) {
+      commit("setError", "Vui lòng điền đẩy đủ thông tin nhận hàng!");
+      return;
+    }
+
+    try {
+      commit("setLoading", true);
+      const { distance, total_price } = await getAhamoShippingFee({
+        address: state.shippingAddress.address,
+        name: state.shippingAddress.name,
+        remarks: "ahamove",
+      });
+
+      if (distance && total_price) {
+        commit("setAhamove", {
+          distance: distance,
+          total_price: total_price,
+        });
+      } else {
+        commit("setAhamove", {});
+      }
+    } catch (err) {
+      console.log(err);
+      commit("setAhamove", {});
     } finally {
       commit("setLoading", false);
     }

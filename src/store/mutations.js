@@ -97,7 +97,10 @@ export default {
   },
 
   setPaymentMethods(state, data) {
-    console.log(data);
     state.paymentMethods = data;
+  },
+
+  setAhamove(state, data) {
+    state.ahamove = data;
   },
 };
