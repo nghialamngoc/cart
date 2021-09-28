@@ -1,5 +1,13 @@
 <script>
-import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
+import {
+  computed,
+  defineComponent,
+  onBeforeMount,
+  ref,
+  watch,
+} from "@vue/runtime-core";
+import { getProductDetail } from "../api";
+import { getSizeDetail } from "../api/order";
 
 export default defineComponent({
   props: ["data", "baseUrl", "productEditId", "isEdit"],
@@ -8,14 +16,20 @@ export default defineComponent({
     // computed
     const colorSelect = ref("");
     const sizeSelect = ref("");
+    const sizeConfig = ref([]);
+    const height = ref(0);
+    const weight = ref(0);
+    const variations = ref([]);
 
     watch(
       () => props.data,
       () => {
         const { isEdit, productEditId, data } = props;
         if (isEdit && data.variations) {
+          variations.value = data.variations;
           const product = data.variations.find(
-            (x) => x.product_id === productEditId
+            (x) =>
+              x.product_id === productEditId && x.actual_remain_quantity > 0
           );
 
           if (product) {
@@ -26,15 +40,122 @@ export default defineComponent({
       }
     );
 
+    onBeforeMount(async () => {
+      try {
+        const data = await getSizeDetail();
+        sizeConfig.value = data.config_size_child || [];
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    const recomment = computed(() => {
+      const weightFormat = Number(weight.value);
+      const heightFormat = Number(height.value);
+
+      const size = sizeConfig.value.find((x) => {
+        const weightFrom = Number(x.weight_from);
+        const weightTo = Number(x.weight_to);
+        const heightFrom = Number(x.height_from);
+        const heightTo = Number(x.height_to);
+
+        return (
+          weightFrom <= weightFormat &&
+          weightTo >= weightFormat &&
+          heightFrom <= heightFormat &&
+          heightTo >= heightFormat
+        );
+      });
+
+      if (size) {
+        return size.name;
+      }
+
+      return "";
+    });
+
+    const maxHeight = computed(() => {
+      let result = 0;
+      for (let index = 0; index < sizeConfig.value.length; index++) {
+        const size = sizeConfig.value[index];
+        if (size.height_to > result) {
+          result = size.height_to;
+        }
+      }
+
+      return result;
+    });
+
+    const minHeight = computed(() => {
+      if (sizeConfig.value.length > 0) {
+        let result = sizeConfig.value[0].height_from;
+        for (let index = 0; index < sizeConfig.value.length; index++) {
+          const size = sizeConfig.value[index];
+          if (size.height_from < result) {
+            result = size.height_from;
+          }
+        }
+
+        height.value = result;
+
+        return result;
+      }
+
+      return 0;
+    });
+
+    const maxWeight = computed(() => {
+      let result = 0;
+      for (let index = 0; index < sizeConfig.value.length; index++) {
+        const size = sizeConfig.value[index];
+        if (size.weight_to > result) {
+          result = size.height_to;
+        }
+      }
+
+      return result;
+    });
+
+    const minWeight = computed(() => {
+      if (sizeConfig.value.length > 0) {
+        let result = sizeConfig.value[0].weight_from;
+        for (let index = 0; index < sizeConfig.value.length; index++) {
+          const size = sizeConfig.value[index];
+          if (size.weight_from < result) {
+            result = size.weight_from;
+          }
+        }
+
+        weight.value = result;
+
+        return result;
+      }
+
+      return 0;
+    });
+
+    const hasVariation = computed(() => {
+      return (
+        props.data &&
+        Array.isArray(props.data.variations) &&
+        props.data.variations.length > 0
+      );
+    });
+
     const productSelect = computed(() => {
-      if (!colorSelect.value || !sizeSelect.value || !props.data) {
-        return "";
+      if (!props.data) {
+        return {};
+      }
+
+      if (!colorSelect.value && !sizeSelect.value && !props.data.variations) {
+        return props.data
       }
 
       const product = props.data.variations.find(
         (x) =>
           x.attribute1_id === colorSelect.value &&
-          x.attribute2_id === sizeSelect.value
+          x.attribute2_id === sizeSelect.value &&
+          x.actual_remain_quantity > 0
       );
 
       if (product) {
@@ -55,6 +176,15 @@ export default defineComponent({
       };
     });
 
+    const getDetail = async () => {
+      try {
+        const data = await getProductDetail(props.data.product_id);
+        variations.value = data.variations || [];
+      } catch (err) {
+        //
+      }
+    };
+
     const checkState = (colorId, sizeId) => {
       if (!props.data) {
         return false;
@@ -64,7 +194,7 @@ export default defineComponent({
         return true;
       }
 
-      const product = props.data.variations.find(
+      const product = variations.value.find(
         (x) => x.attribute1_id === colorId && x.attribute2_id === sizeId
       );
 
@@ -75,7 +205,9 @@ export default defineComponent({
       return false;
     };
 
-    const onColorChange = (color) => {
+    const onColorChange = async (color) => {
+      await getDetail();
+
       if (!checkState(color.id, sizeSelect.value)) {
         return;
       }
@@ -83,7 +215,9 @@ export default defineComponent({
       colorSelect.value = color.id;
     };
 
-    const onSizeChange = (size) => {
+    const onSizeChange = async (size) => {
+      await getDetail();
+
       if (!checkState(colorSelect.value, size.id)) {
         return;
       }
@@ -97,9 +231,17 @@ export default defineComponent({
 
     return {
       price,
-      productSelect,
-      colorSelect,
+      height,
+      weight,
+      minHeight,
+      maxWeight,
+      minWeight,
+      recomment,
+      maxHeight,
       sizeSelect,
+      colorSelect,
+      hasVariation,
+      productSelect,
       onColorChange,
       onSizeChange,
       checkState,
@@ -225,7 +367,10 @@ export default defineComponent({
                           <i class="far fa-star"></i>
                           <i class="far fa-star"></i>
                         </div>
-                        <div class="filled-stars" style="width: 80%">
+                        <div
+                          class="filled-stars"
+                          :style="`width: ${(data.rating_start / 5) * 100}%`"
+                        >
                           <i class="far fa-star"></i>
                           <i class="far fa-star"></i>
                           <i class="far fa-star"></i>
@@ -233,7 +378,10 @@ export default defineComponent({
                           <i class="far fa-star"></i>
                         </div>
                       </div>
-                      <span>4.5 (20 đánh giá)</span>
+                      <span
+                        >{{ data.rating_start }} ({{ data.total_comment }} đánh
+                        giá)</span
+                      >
                     </div>
                     <div class="pd-detail__purchases">
                       <i class="fas fa-shopping-cart"></i>
@@ -248,7 +396,7 @@ export default defineComponent({
               </div>
             </div>
           </div>
-          <div class="mb-3">
+          <div class="mb-3" v-if="hasVariation">
             <p class="fw-medium mb-1">Màu sắc:</p>
             <div class="d-flex flex-wrap">
               <label
@@ -272,7 +420,7 @@ export default defineComponent({
               </label>
             </div>
           </div>
-          <div class="js-size">
+          <div class="js-size" v-if="hasVariation">
             <p class="fw-medium mb-1">Size:</p>
             <div class="row gx-3 align-items-center">
               <div class="col-7">
@@ -308,25 +456,27 @@ export default defineComponent({
                 <div class="mb-3">
                   <div class="d-flex justify-content-between g-2 fw-medium">
                     <span>Chiều cao</span>
-                    <span class="js-size-height-output">160cm</span>
+                    <span class="js-size-height-output">{{ height }}cm</span>
                   </div>
                   <input
                     type="range"
                     class="form-range js-size-height-input"
-                    min="0"
-                    max="188"
+                    :min="minHeight"
+                    :max="maxHeight"
+                    v-model="height"
                   />
                 </div>
                 <div class="mb-3">
                   <div class="d-flex justify-content-between fw-medium">
                     <span>Cân nặng</span>
-                    <span class="js-size-weight-output">60kg</span>
+                    <span class="js-size-weight-output">{{ weight }}kg</span>
                   </div>
                   <input
                     type="range"
                     class="form-range js-size-weight-input"
-                    min="0"
-                    max="88"
+                    :min="minWeight"
+                    :max="maxWeight"
+                    v-model="weight"
                   />
                 </div>
                 <div class="d-flex align-items-center">
@@ -335,6 +485,7 @@ export default defineComponent({
                     type="text"
                     class="form-control js-size-result"
                     readonly
+                    :value="recomment"
                   />
                 </div>
               </div>
@@ -354,7 +505,7 @@ export default defineComponent({
               justify-content-center
               add-to-cart-modal-btn
             "
-            :disabled="!productSelect.product_id"
+            :disabled="!productSelect.product_id || !hasVariation"
             @click="onSubmit"
           >
             <img
@@ -362,7 +513,7 @@ export default defineComponent({
               alt=""
               class="me-2"
             />
-            {{ isEdit ? "Cập nhập" : "Thêm vào giỏ" }}
+            {{ isEdit ? !hasVariation ? "Đã chọn" : "Cập nhập" : "Thêm vào giỏ" }}
           </button>
         </div>
       </div>

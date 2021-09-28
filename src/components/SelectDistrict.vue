@@ -1,7 +1,7 @@
 <script>
 import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
 import { baseUrl } from "../constant";
-import axios from "axios";
+import axios from "../service/axios";;
 
 export default defineComponent({
   props: ["province_id"],

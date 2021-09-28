@@ -5,7 +5,7 @@ import { baseUrl } from "../constant";
 import { date } from "../helper/format";
 import Loading from "./Loading.vue";
 import ErrorDialog from "./ErrorDialog.vue";
-import { getCustomerInfo, updateCustomerInfo } from "../api/account";
+import { getCustomerInfo, updateCustomerInfo, uploadImage } from "../api/account";
 import { closeModal, openModal } from "../helper/modal";
 
 export default defineComponent({
@@ -88,9 +88,30 @@ export default defineComponent({
           date_of_birth: date(date_of_birth, "yyyy-MM-dd"),
         });
 
-        await customerInfoApi()
+        await customerInfoApi();
 
-        closeModal("updateInfoModal")
+        closeModal("updateInfoModal");
+      } catch (err) {
+        isError.value = true;
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const onUploadFile = () => {
+      const el = document.getElementById("upload_image");
+
+      if (el) {
+        el.click();
+      }
+    };
+
+    const onUploadImage = async (e) => {
+      try {
+        isLoading.value = true;
+        await uploadImage(e.target.files[0]);
+
+        await customerInfoApi();
       } catch (err) {
         isError.value = true;
       } finally {
@@ -107,6 +128,8 @@ export default defineComponent({
       customerInfo,
       date,
       onHideError,
+      onUploadFile,
+      onUploadImage,
       updateCustomer,
       openUpdateDialog,
     };
@@ -160,14 +183,19 @@ export default defineComponent({
         <div class="row gx-3 mb-10 align-items-end">
           <div class="col-3"></div>
           <div class="col-6">
-            <div class="user-avatar">
+            <div class="user-avatar" @click="onUploadFile">
               <div class="user-avatar__img ratio ratio-1x1">
-                <img
-                  :src="`${baseUrl}/1111111111111111111/images/user-avatar.png`"
-                  alt=""
-                />
+                <img :src="customerInfo.photo_url" alt="" />
               </div>
               <div class="user-avatar__heraldic">
+                <input
+                  type="file"
+                  id="upload_image"
+                  name="img"
+                  accept="image/*"
+                  class="d-none"
+                  @change="onUploadImage"
+                />
                 <img
                   :src="`${baseUrl}/1111111111111111111/images/heraldic.svg`"
                   alt=""

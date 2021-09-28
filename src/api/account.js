@@ -75,7 +75,7 @@ export const getOrderDetail = async (id) => {
       };
     }
 
-    return {}
+    return {};
   } catch (err) {
     return Promise.reject(err);
   }
@@ -228,6 +228,60 @@ export const getCancelOrder = async () => {
     }
 
     return [];
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const uploadImage = async (file) => {
+  try {
+    var formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await axios.post(
+      `${baseUrl}/image/api/v1/upload`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (data && data[0]) {
+      await axios.post(`${baseUrl}/customer/api/v1/upload_image`, {
+        photo_url: data[0],
+      });
+    }
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const addCustomerAddress = async (payload) => {
+  try {
+    await axios.post(`${baseUrl}/customer/api/v1/address/add`, payload);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const updateCustomerAddress = async (payload) => {
+  try {
+    await axios.post(`${baseUrl}/customer/api/v1/address/update`, payload);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const deleteCustomerAddress = async (payload) => {
+  try {
+    const { data } = await axios.post(
+      `${baseUrl}/customer/api/v1/address/delete`,
+      payload
+    );
+
+    return data;
   } catch (err) {
     return Promise.reject(err);
   }

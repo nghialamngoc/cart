@@ -86,6 +86,12 @@ export default defineComponent({
         return;
       }
 
+      var vnf_regex = /((09|03|07|08|05)+([0-9]{8})\b)/g;
+      if (vnf_regex.test(phone_number) == false) {
+        store.dispatch("setError", "Số điện thoại của bạn không đúng định dạng!");
+        return;
+      }
+
       try {
         store.dispatch("setLoading", true);
         await updateCartShippingAddress({
@@ -326,7 +332,7 @@ export default defineComponent({
               <div class="mb-3">
                 <label class="fw-medium">Số điện thoại</label>
                 <input
-                  type="number"
+                  type="text"
                   class="form-control form-control--underline"
                   placeholder="VD: 0905 555 000"
                   v-model="shippingAddressEdit.phone_number"

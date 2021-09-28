@@ -13,7 +13,7 @@ import CartPay from "./CartPay.vue";
 import CartHeader from "./CartHeader.vue";
 import ErrorDialog from "./ErrorDialog.vue";
 import Loading from "./Loading.vue";
-import CartSuccess from "./CartSuccess.vue"
+import CartSuccess from "./CartSuccess.vue";
 import CartChangeDialog from "./CartChangeDialog.vue";
 
 export default defineComponent({
@@ -38,6 +38,7 @@ export default defineComponent({
     const error = computed(() => store.state.error);
     const cartChange = computed(() => store.state.cartChange);
     const errorMessage = computed(() => store.state.errorMessage);
+    const productList = computed(() => store.getters.productList);
 
     // Lifecycle
     onBeforeMount(async () => {
@@ -62,11 +63,12 @@ export default defineComponent({
     };
 
     return {
-      cartChange,
-      isLoading,
-      error,
-      errorMessage,
       step,
+      error,
+      isLoading,
+      cartChange,
+      productList,
+      errorMessage,
       // Action
       onChangeStep,
       onHideError,
@@ -79,13 +81,17 @@ export default defineComponent({
 <template>
   <main class="main" id="main">
     <CartHeader :step="step" @onChangeStep="onChangeStep" />
+    <template v-if="productList.length === 0">
+      Giỏ hàng trống mua ngay
+    </template>
+    <template v-else>
+      <CartInfo v-if="step === 1" />
+      <CartPay v-if="step === 2" />
+      <CartSuccess v-if="step === 3" />
 
-    <CartInfo v-if="step === 1" />
-    <CartPay v-if="step === 2" />
-    <CartSuccess v-if="step === 3" />
-
-    <!-- Cart Summary -->
-    <CartTotalSumary v-if="step != 3" />
+      <!-- Cart Summary -->
+      <CartTotalSumary v-if="step != 3" />
+    </template>
   </main>
 
   <ErrorDialog

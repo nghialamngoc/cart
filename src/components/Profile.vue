@@ -7,6 +7,7 @@ import {
   getCustomerInfo,
   getNewOrderWebsite,
 logOut,
+uploadImage,
 } from "../api/account";
 import { money, date } from "../helper/format";
 import Loading from "./Loading.vue";
@@ -216,6 +217,27 @@ export default defineComponent({
       openModal("loginModal")
     }
 
+    const onUploadFile = () => {
+      const el = document.getElementById("upload_image")
+
+      if (el) {
+        el.click()
+      }
+    }
+
+    const onUploadImage = async (e) => {
+      try {
+        isLoading.value = true;
+        await uploadImage(e.target.files[0]);
+
+        await customerInfoApi()
+      } catch (err) {
+        isError.value = true;
+      } finally {
+        isLoading.value = false;
+      }
+    }
+
     return {
       baseUrl,
       isError,
@@ -226,9 +248,10 @@ export default defineComponent({
       deliveredOrderList,
       date,
       money,
-      loginClick,
-      logOutClick,
       onHideError,
+      logOutClick,
+      onUploadFile,
+      onUploadImage,
       activeNewOrder,
       activeDeliveredOrder,
       activeCanceledOrder,
@@ -281,11 +304,12 @@ export default defineComponent({
     <template v-if="customerInfo.id">
       <div class="section pt-30 pb-2">
         <div class="container-fluid">
-          <div class="user-avatar">
+          <div class="user-avatar" @click="onUploadFile">
             <div class="user-avatar__img ratio ratio-1x1">
-              <img :src="customerInfo.image" alt="" />
+              <img :src="customerInfo.photo_url" alt="" />
             </div>
             <div class="user-avatar__heraldic">
+              <input type="file" id="upload_image" name="img" accept="image/*" class="d-none" @change="onUploadImage">
               <img
                 :src="`${baseUrl}/1111111111111111111/images/heraldic.svg`"
                 alt=""
@@ -463,7 +487,7 @@ export default defineComponent({
                         <div class="order-channel__status__left">
                           <a
                             class="order-channel__status__code"
-                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                            :href="`${baseUrl}/profile/order/detail?id=${order.order_id}`"
                           >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
                           </a>
@@ -737,7 +761,7 @@ export default defineComponent({
                         <div class="order-channel__status__left">
                           <a
                             class="order-channel__status__code"
-                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                            :href="`${baseUrl}/profile/order/detail?id=${order.order_id}`"
                           >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
                           </a>
@@ -999,7 +1023,7 @@ export default defineComponent({
                         <div class="order-channel__status__left">
                           <a
                             class="order-channel__status__code"
-                            :href="`${baseUrl}/order_detail?id=${order.order_id}`"
+                            :href="`${baseUrl}/profile/order/detail?id=${order.order_id}`"
                           >
                             Mã đơn hàng: <strong>{{ order.order_id }}</strong>
                           </a>
@@ -1258,7 +1282,7 @@ export default defineComponent({
                   </a>
                 </li>
                 <li>
-                  <a href="#">
+                  <a :href="`${baseUrl}/product-viewed`">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-eye.svg`"
                       alt=""
@@ -1267,7 +1291,7 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li>
+                <li v-if="customerInfo.id">
                   <a href="#">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-heart.svg`"
@@ -1277,7 +1301,7 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li>
+                <li v-if="customerInfo.id">
                   <a href="#">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-time.svg`"
@@ -1287,7 +1311,7 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li>
+                <li v-if="customerInfo.id">
                   <a href="#">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-favorite.svg`"
@@ -1314,8 +1338,8 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li>
-                  <a href="#">
+                <li v-if="customerInfo.id">
+                  <a :href="`${baseUrl}/profile_info`">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-user.svg`"
                       alt=""
@@ -1324,8 +1348,8 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li>
-                  <a href="#">
+                <li v-if="customerInfo.id">
+                  <a :href="`${baseUrl}/addresses`">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-location.svg`"
                       alt=""

@@ -1,5 +1,5 @@
 <script>
-import { computed, defineComponent, ref } from "@vue/runtime-core";
+import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
 import { useStore } from "vuex";
 import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 import { closeModal, openModal } from "../helper/modal";
@@ -43,6 +43,29 @@ export default defineComponent({
     const isEdit = ref(false); // false: new, true: edit
     const productEditId = ref("");
 
+    onMounted(() => {
+      const a = setInterval(() => {
+        const el = document.querySelectorAll(".swiper-vertical");
+        if (el.length > 0) {
+          el.forEach((swiper) => {
+            const swiperContainer = swiper.querySelector(".swiper-container");
+            new Swiper(swiperContainer, {
+              speed: 600,
+              slidesPerView: 1,
+              spaceBetween: 12,
+              direction: "vertical",
+              autoplay: {
+                delay: 2000,
+                disableOnInteraction: false,
+              },
+              loop: true,
+            });
+          });
+          clearInterval(a);
+        }
+      }, 1000);
+    });
+
     // methods
     const onQuantityChange = (product_id, quantity) => {
       store.dispatch("addProductToCart", {
@@ -67,7 +90,16 @@ export default defineComponent({
       });
     };
 
-    const viewDetail = async (product, edit, type) => {
+    const getDetail = async (productId) => {
+      try {
+        const data = await getProductDetail(productId);
+        productDetail.value = data;
+      } catch (err) {
+        //
+      }
+    };
+
+    const viewDetail = async (product, edit, type, isOpenModal = true) => {
       try {
         isEdit.value = edit;
         viewType.value = type;
@@ -79,14 +111,15 @@ export default defineComponent({
         }
 
         store.dispatch("setLoading", true);
-        const data = await getProductDetail(
+        await getDetail(
           Number(product.parent_id) ? product.parent_id : product.product_id
         );
 
-        productDetail.value = data;
-
         closeModal("giftListModal");
-        openModal("addToCartModal");
+
+        if (isOpenModal) {
+          openModal("addToCartModal");
+        }
       } catch (err) {
         store.dispatch("setError", resolveErrorMessage(err));
       } finally {
@@ -160,14 +193,14 @@ export default defineComponent({
       validVoucherList,
       freeShipCondition,
       vouchersSpecialList,
-      viewDetailPack,
+      buyMore,
+      updateCart,
+      viewDetail,
       onPackChange,
       selectVoucher,
+      viewDetailPack,
       onQuantityChange,
-      viewDetail,
-      updateCart,
       applyVoucherCode,
-      buyMore,
     };
   },
 });
@@ -301,7 +334,12 @@ export default defineComponent({
                     class="btn m-cart__select m-cart__select--size"
                     @click="() => viewDetail(product, true, 1)"
                   >
-                    Size <strong>{{ product.attribute.size }}</strong>
+                    Size
+                    <strong>{{
+                      product.attribute.size === "Size"
+                        ? ""
+                        : product.attribute.size
+                    }}</strong>
                   </button>
                 </div>
                 <div class="m-cart__edit__right">
@@ -545,63 +583,64 @@ export default defineComponent({
               class="btn btn-fit btn-icon-end"
               data-bs-toggle="modal"
               data-bs-target="#voucherModal"
-              v-if="voucherList.length >= 1"
+              v-if="voucherList.length > 0"
             >
               Xem tất cả
               <i class="fas fa-chevron-right"></i>
             </button>
           </div>
         </div>
-        <div class="vb-cate__content">
-          <div
-            :class="`vb-item ${voucher.level == 3 && 'vb-item--special'}`"
-            v-for="(voucher, index) in voucherList"
-            :key="index"
-          >
-            <div
-              class="vb-item__inner"
-              :style="{
-                backgroundImage:
-                  voucher.level == 3
-                    ? `url(${baseUrl}/1111111111111111111/images/limit-edition.svg)`
-                    : '',
-              }"
-            >
-              <div class="vb-item__icon">
-                <img :src="voucher.icon" alt="" />
-              </div>
-              <div class="vb-item__info">
-                <div class="vb-item__head">
-                  <span class="vb-item__title">{{ voucher.name }}</span>
-                </div>
-                <p class="vb-item__desc">
-                  {{ voucher.content }}<br />Mã: {{ voucher.code }}
-                </p>
-                <div class="vb-item__footer">
-                  <div class="vb-item__expiration">
-                    Ngày hết hạn {{ voucher.end_at }}
+        <div class="swiper-vertical voucher-slider">
+          <div class="swiper-container">
+            <div class="swiper-wrapper">
+              <div
+                class="swiper-slide"
+                style="height: 52px; margin-bottom: 12px"
+                v-for="(voucher, index) in voucherList"
+                :key="index"
+              >
+                <div
+                  class="voucher-item"
+                  data-bs-toggle="modal"
+                  data-bs-target="#voucherModal"
+                >
+                  <div
+                    class="voucher-item__code"
+                    :style="{
+                      backgroundImage:
+                        voucher.level === 3
+                          ? `url(${baseUrl}/1111111111111111111/images/voucher-special-left.png)`
+                          : `url(${baseUrl}/1111111111111111111/images/voucher-F5-left.png)`,
+                      color: voucher.level === 3 ? 'white' : '#004377',
+                    }"
+                  >
+                    <span>{{ voucher.name }}</span>
                   </div>
-                  <label class="vb-item__apply text-toggle">
-                    <input
-                      type="checkbox"
-                      value="POLOFREE"
-                      name="vb"
-                      class="text-toggle__input"
-                      checked
-                    />
-                    <span
-                      class="text-toggle__checkmark"
-                      :style="{
-                        color:
-                          cart.discount_code === voucher.voucher_id
-                            ? '#C0C2CB'
-                            : '#004377',
-                      }"
-                      @click="() => selectVoucher(voucher)"
-                      v-if="cart.discount_code === voucher.voucher_id"
-                      >Đã áp dụng</span
-                    >
-                  </label>
+                  <div
+                    class="voucher-item__desc"
+                    :style="{
+                      backgroundImage:
+                        voucher.level === 3
+                          ? `url(${baseUrl}/1111111111111111111/images/voucher-special-right.png)`
+                          : `url(${baseUrl}/1111111111111111111/images/voucher-F5-right.png)`,
+                      color: voucher.level === 3 ? 'white' : 'black',
+                    }"
+                  >
+                    <div>
+                      <img
+                        class="voucher-item__desc__icon"
+                        :src="
+                          voucher.level === 3
+                            ? `${baseUrl}/1111111111111111111/images/voucher-special-icon.svg`
+                            : `${baseUrl}/1111111111111111111/images/gift-37.svg`
+                        "
+                        alt=""
+                      />
+                    </div>
+                    <div class="voucher-item__desc__text">
+                      {{ voucher.content }}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -86,7 +86,7 @@ export default defineComponent({
     };
 
     const goToProfilePage = () => {
-      location.replace(`${baseUrl}/profile`);
+      location.replace(`${baseUrl}/profile/order/detail?id=${orderId.value}`);
     };
 
     const goToHomePage = () => {

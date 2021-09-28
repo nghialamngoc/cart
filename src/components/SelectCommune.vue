@@ -1,6 +1,6 @@
 <script>
 import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
-import axios from "axios";
+import axios from "../service/axios";;
 import { baseUrl } from "../constant";
 
 export default defineComponent({

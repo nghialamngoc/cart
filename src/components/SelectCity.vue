@@ -5,7 +5,7 @@ import {
   onBeforeMount,
   ref,
 } from "@vue/runtime-core";
-import axios from "axios";
+import axios from "../service/axios";
 import { baseUrl } from "../constant";
 
 export default defineComponent({

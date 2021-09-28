@@ -10,3 +10,13 @@ export const getOrderInfo = async (payload) => {
     return Promise.reject(err);
   }
 };
+
+export const getSizeDetail = async (payload) => {
+  try {
+    const { data } = await axios.post(`${baseUrl}/size/api/v1/detail-size`);
+
+    return data;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
