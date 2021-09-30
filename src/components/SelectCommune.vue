@@ -43,7 +43,7 @@ export default defineComponent({
           id: props.district_id,
         });
 
-        communeList.value = data.data;
+        communeList.value = data;
       } catch (err) {
         console.log(err);
       }

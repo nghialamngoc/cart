@@ -303,7 +303,7 @@ export default {
     try {
       commit("setLoading", true);
       const { distance, total_price } = await getAhamoShippingFee({
-        address: state.shippingAddress.address,
+        address: `${state.shippingAddress.address}, ${state.shippingAddress.province_name}, ${state.shippingAddress.district_name}, ${state.shippingAddress.commune_name}`,
         name: state.shippingAddress.name,
         remarks: "ahamove",
       });

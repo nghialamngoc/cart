@@ -100,8 +100,8 @@ export default defineComponent({
               retail_price: x.price_retail,
               discount: x.price_sale,
               quantity: x.quantity,
-              product_id: Number(x.product_id),
-              parent_id: Number(x.parent_id),
+              product_id: x.product_id,
+              parent_id: x.parent_id,
               sku: x.sku,
               type: x.type,
             };

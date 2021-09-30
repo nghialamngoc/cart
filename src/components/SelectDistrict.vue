@@ -42,7 +42,7 @@ export default defineComponent({
           }
         );
 
-        districtList.value = data.data;
+        districtList.value = data;
       } catch (err) {
         console.log(err);
       }

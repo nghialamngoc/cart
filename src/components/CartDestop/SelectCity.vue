@@ -5,8 +5,8 @@ import {
   onBeforeMount,
   ref,
 } from "@vue/runtime-core";
-import axios from "../service/axios";
-import { baseUrl } from "../constant";
+import axios from "../../service/axios";
+import { baseUrl } from "../../constant";
 
 export default defineComponent({
   emits: ["onSelect"],
@@ -38,7 +38,7 @@ export default defineComponent({
       try {
         const { data } = await axios.post(`${baseUrl}/country/api/v1/province`);
 
-        provinceList.value = data;
+        provinceList.value = data.data;
       } catch (err) {
         console.log(err);
       }

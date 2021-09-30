@@ -1,68 +1,78 @@
 <script>
-import {
-  computed,
-  defineComponent,
-  onBeforeMount,
-  ref,
-} from "@vue/runtime-core";
-import axios from "../service/axios";
-import { baseUrl } from "../constant";
+import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
+import axios from "../../service/axios";
+import { baseUrl } from "../../constant";
 
 export default defineComponent({
-  emits: ["onSelect"],
+  props: ["district_id"],
+  emits: ["onSelect", "goBack"],
   setup(props, { emit }) {
-    const provinceList = ref([]);
+    const communeList = ref([]);
     const searchString = ref("");
 
-    onBeforeMount(() => {
-      getProvince();
-    });
+    watch(
+      () => props.district_id,
+      () => {
+        getCommune();
+      }
+    );
 
     // computed
-    const provinceSearchList = computed(() => {
-      if (!provinceList.value || provinceList.value.length == 0) {
+    const communeSearchList = computed(() => {
+      if (!communeList.value || communeList.value.length == 0) {
         return [];
       }
 
       if (!searchString.value) {
-        return provinceList.value;
+        return communeList.value;
       }
 
-      return provinceList.value.filter((x) =>
+      return communeList.value.filter((x) =>
         x.name.includes(searchString.value)
       );
     });
 
     // methods
-    const getProvince = async () => {
-      try {
-        const { data } = await axios.post(`${baseUrl}/country/api/v1/province`);
+    const getCommune = async () => {
+      if (!props.district_id) {
+        return;
+      }
 
-        provinceList.value = data;
+      try {
+        const { data } = await axios.post(`${baseUrl}/country/api/v1/commune`, {
+          id: props.district_id,
+        });
+
+        communeList.value = data.data;
       } catch (err) {
         console.log(err);
       }
     };
 
-    const onSelectClick = (province) => {
-      emit("onSelect", province)
+    const onSelectClick = (commune) => {
+      emit("onSelect", commune);
+    };
+
+    const onGoBack = () => {
+      emit("goBack");
     };
 
     return {
+      communeSearchList,
       searchString,
-      provinceSearchList,
       baseUrl,
       onSelectClick,
+      onGoBack,
     };
   },
 });
 </script>
 
 <template>
-  <!-- CITY MODAL -->
+  <!-- WARD MODAL -->
   <div
     class="modal fade modal-bottom location-modal"
-    id="cityModal"
+    id="wardModal"
     tabindex="-1"
     aria-labelledby="locationModalLabel"
     aria-hidden="true"
@@ -71,7 +81,8 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-header">
           <p class="modal-title">
-            CHỌN TỈNH / THÀNH PHỐ
+            <i class="fas fa-chevron-left" @click="onGoBack"></i>
+            CHỌN PHƯỜNG / XÃ
           </p>
           <button
             type="button"
@@ -85,7 +96,7 @@ export default defineComponent({
             <input
               class="form-control search-form__input"
               type="text"
-              placeholder="Tìm kiếm"
+              placeholder="Tìm kiếm Phường/ Xã"
               v-model="searchString"
             />
             <button type="button" class="btn search-form__btn">
@@ -97,13 +108,15 @@ export default defineComponent({
           </div>
           <div class="flex-grow-1 overflow-y-auto">
             <ul class="location-nav">
-              <li
-                v-for="(province, index) in provinceSearchList"
-                :key="index"
-                @click="() => onSelectClick(province)"
-              >
-                {{ province.name }}
-              </li>
+              <ul class="location-nav">
+                <li
+                  v-for="(commune, index) in communeSearchList"
+                  :key="index"
+                  @click="() => onSelectClick(commune)"
+                >
+                  {{ commune.name }}
+                </li>
+              </ul>
             </ul>
           </div>
         </div>

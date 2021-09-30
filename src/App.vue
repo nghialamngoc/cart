@@ -1,15 +1,15 @@
 <script>
-import Profile from "./components/Profile.vue";
+import CartDestop from "./components/CartDestop/Cart.vue";
 
 export default {
   components: {
-    Profile,
+    CartDestop,
   },
 };
 </script>
 
 <template>
-  <Profile></Profile>
+  <CartDestop></CartDestop>
 </template>
 
 <style></style>
