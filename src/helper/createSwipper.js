@@ -111,3 +111,33 @@ export const createSwipper2 = (el) => {
 
   return swiper;
 };
+
+export const createSwipper3 = (el) => {
+  const swiperContainer = el.querySelector(".swiper-container");
+  const swiperPrev = el.querySelector(".swiper-button-prev");
+  const swiperNext = el.querySelector(".swiper-button-next");
+  const swiperPagination = el.querySelector(".swiper-pagination");
+  const loop = el.dataset.loop !== "false";
+  const swipper = new Swiper(swiperContainer, {
+    speed: 800,
+    autoHeight: false,
+    slidesPerView: "auto",
+    observer: true,
+    resizeObserver: true,
+    autoplay: {
+      delay: 3000,
+      disableOnInteraction: false,
+    },
+    loop: loop,
+    pagination: {
+      el: swiperPagination,
+      clickable: true,
+    },
+    navigation: {
+      nextEl: swiperNext,
+      prevEl: swiperPrev,
+    },
+  });
+
+  return swipper;
+};

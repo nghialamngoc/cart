@@ -103,7 +103,16 @@ export default {
     try {
       commit("setLoading", true);
       const data = await getCollection();
-      commit("setCollection", data);
+      const result = [];
+      if (data && Object.keys(data).length > 0) {
+        Object.keys(data).forEach((x) => {
+          result.push({
+            ...data[x],
+            product_id: x,
+          });
+        });
+      }
+      commit("setCollection", result);
     } catch (err) {
       console.log(err);
     } finally {

@@ -1,15 +1,15 @@
 <script>
-import CartDestop from "./components/CartDestop/Cart.vue";
+import Cart from "./components/Cart.vue";
 
 export default {
   components: {
-    CartDestop,
+    Cart,
   },
 };
 </script>
 
 <template>
-  <CartDestop></CartDestop>
+  <Cart></Cart>
 </template>
 
 <style></style>

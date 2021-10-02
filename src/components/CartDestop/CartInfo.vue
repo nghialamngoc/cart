@@ -3,7 +3,11 @@ import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
 import { useStore } from "vuex";
 import { resolveErrorMessage } from "../../helper/resolveErrorMessage";
 import { closeModal, openModal } from "../../helper/modal";
-import { create, createSwipper, createSwipper2 } from "../../helper/createSwipper";
+import {
+  createSwipper,
+  createSwipper2,
+  createSwipper3,
+} from "../../helper/createSwipper";
 
 // constants
 import { baseUrl } from "../../constant";
@@ -41,19 +45,24 @@ export default defineComponent({
     const subPrice = computed(() => store.getters.subPrice);
 
     const voucherCode = ref("");
-    const boxDetail = ref({});
+    const boxDetail = ref({
+      videos: [],
+      images: [],
+    });
     const productDetail = ref({});
     const viewType = ref(1); // 1: product, 3: gift
     const isEdit = ref(false); // false: new, true: edit
     const productEditId = ref("");
 
     // swiper
-    const productDetailVoucherSwiper = ref(null);
-    const productDetailImagesSwiper = ref(null);
+    const packSwiper = ref(null);
 
     onMounted(() => {
       setTimeout(() => {
-        // create();
+        const collectionSwipper = document.getElementById("collection-swipper");
+        if (collectionSwipper && collection.value.length > 3) {
+          createSwipper3(collectionSwipper);
+        }
       }, 1000);
     });
 
@@ -67,7 +76,34 @@ export default defineComponent({
     };
 
     const viewDetailPack = (pack) => {
+      pack.gallery = JSON.stringify([
+        ...pack.videos.map((x) => {
+          return {
+            src: x,
+            thumb: x,
+            type: "video",
+          };
+        }),
+        ...pack.images.map((x) => {
+          return {
+            src: x,
+            thumb: x,
+            type: "image",
+          };
+        }),
+      ]);
       boxDetail.value = pack;
+      openModal("packDetailModal");
+      setTimeout(() => {
+        if (packSwiper.value) {
+          packSwiper.value.destroy();
+        }
+
+        const el = document.getElementById("pack-swipper");
+        if (el) {
+          packSwiper.value = createSwipper3(el);
+        }
+      }, 100);
     };
 
     const onPackChange = (id) => {
@@ -90,56 +126,34 @@ export default defineComponent({
       }
     };
 
-    const viewDetail = async (product, edit, type, isOpenModal = true) => {
+    const viewDetail = async (product, edit, type, isOpenModal = true, editId) => {
       try {
         isEdit.value = edit;
         viewType.value = type;
 
         if (isEdit) {
-          productEditId.value = product.product_id;
+          productEditId.value = editId;
         } else {
           productEditId.value = "";
         }
 
         store.dispatch("setLoading", true);
+        productDetail.value = {}
         await getDetail(
           Number(product.parent_id) ? product.parent_id : product.product_id
         );
 
-        closeModal("giftListModal");
+        closeModal("giftModal");
+
+        // if (productDetail.value.product_id)
 
         if (isOpenModal) {
           openModal("addToCartModal");
-          createSwipp()
         }
       } catch (err) {
         store.dispatch("setError", resolveErrorMessage(err));
       } finally {
         store.dispatch("setLoading", false);
-      }
-    };
-
-    const createSwipp = () => {
-      if (!productDetailVoucherSwiper.value) {
-        const el = document.getElementById("voucher-slider");
-
-        if (el) {
-          setTimeout(() => {
-            const swiper = createSwipper(el);
-            productDetailVoucherSwiper.value = swiper;
-          }, 1000);
-        }
-      }
-
-      if (!productDetailImagesSwiper.value) {
-        const el = document.getElementById("product-image__swipper");
-
-        if (el) {
-          setTimeout(() => {
-            const swiper = createSwipper2(el);
-            productDetailImagesSwiper.value = swiper;
-          }, 100);
-        }
       }
     };
 
@@ -162,6 +176,20 @@ export default defineComponent({
         console.log(err);
       } finally {
         closeModal("addToCartModal");
+      }
+    };
+
+    const updateGift = async (newProductId) => {
+      try {
+        if (isEdit.value) {
+          await store.dispatch("replaceProductInCart", {
+            old_product_id: giftSelected.value.product_id,
+            new_product_id: newProductId,
+            type: 2,
+          });
+        }
+      } catch (err) {
+        console.log(err);
       }
     };
 
@@ -213,7 +241,9 @@ export default defineComponent({
       freeShipCondition,
       vouchersSpecialList,
       buyMore,
+      updateGift,
       updateCart,
+      closeModal,
       viewDetail,
       onPackChange,
       selectVoucher,
@@ -284,11 +314,9 @@ export default defineComponent({
                   </div>
                 </div>
                 <div class="col-auto">
-                  <a
-                    href="#"
-                    class="btn btn-icon-end btn-fit text-primary fz-12"
-                    >Xem thêm <i class="fas fas fa-chevron-right"></i
-                  ></a>
+                  <div class="btn btn-icon-end btn-fit text-primary fz-12">
+                    Xem thêm <i class="fas fas fa-chevron-right"></i>
+                  </div>
                 </div>
               </div>
             </div>
@@ -371,7 +399,7 @@ export default defineComponent({
                       <div class="row g-2">
                         <div
                           class="col-auto"
-                          @click="() => viewDetail(product, true, 1)"
+                          @click="() => viewDetail(product, true, 1, true, product.product_id)"
                         >
                           <div class="row row-cols-2 gx-2">
                             <div class="col">
@@ -553,8 +581,6 @@ export default defineComponent({
                         <div class="pack-item__info__row__right">
                           <div
                             class="btn btn-icon-start pack-item__detail"
-                            data-bs-toggle="modal"
-                            data-bs-target="#packDetailModal"
                             @click="() => viewDetailPack(box)"
                           >
                             <img
@@ -615,12 +641,9 @@ export default defineComponent({
                   </div>
                 </div>
               </section>
-              <section
-                class="pt-45"
-                v-if="collection.products && collection.products.length > 0"
-              >
+              <section class="pt-45" v-if="collection && collection.length > 0">
                 <h2 class="fz-18 fw-bold mb-25">ƯU ĐÃI RIÊNG CHO BẠN</h2>
-                <div class="swiper-init">
+                <div class="swiper-init" id="collection-swipper">
                   <div class="swiper-container">
                     <div
                       class="
@@ -630,37 +653,38 @@ export default defineComponent({
                     >
                       <div
                         class="swiper-slide"
-                        v-for="(product, index) in collection.products"
+                        v-for="(product, index) in collection"
                         :key="index"
-                        @click="() => viewDetail(product, false, 1)"
                       >
                         <div class="pd-item pd-item--sm-2">
                           <div class="pd-item__top">
                             <div class="pd-item__top__img ratio">
                               <img :src="product.url_media" alt="" />
                             </div>
-                            <div class="pd-item__top__tag">New</div>
-                            <a
-                              href="#"
+                            <div
+                              class="pd-item__top__tag"
+                              v-if="product.is_new"
+                            >
+                              New
+                            </div>
+                            <div
                               class="
                                 pd-item__top__icon pd-item__top__icon--heart
                               "
                             >
                               <i class="far fa-heart"></i>
-                            </a>
-                            <a
-                              href="#"
+                            </div>
+                            <div
                               class="
                                 pd-item__top__icon pd-item__top__icon--cart
                               "
-                              data-bs-toggle="modal"
-                              data-bs-target="#addToCartModal"
+                              @click="() => viewDetail(product, false, 1)"
                             >
                               <img
                                 :src="`${baseUrl}/1111111111111111111/images/pd-cart-icon.svg`"
                                 alt=""
                               />
-                            </a>
+                            </div>
                           </div>
                           <div class="pd-item__bottom">
                             <span
@@ -671,10 +695,12 @@ export default defineComponent({
                               >Giảm giá</span
                             >
                             <p class="pd-item__bottom__title">
-                              <a href="#"> {{ product.product_title }}</a>
+                              <a :href="`san-pham/${product.slug}`">
+                                {{ product.product_title }}</a
+                              >
                             </p>
                             <p class="pd-item__bottom__desc">
-                              Áo polo phối màu trơn
+                              {{ product.short_description }}
                             </p>
                             <p class="pd-item__bottom__price">
                               <del
@@ -706,10 +732,7 @@ export default defineComponent({
                                   }}%</span
                                 ></span
                               >
-                              <span
-                                class="pd-item__bottom__price__new"
-                                v-if="product.price_sale != 0"
-                              >
+                              <span class="pd-item__bottom__price__new" v-else>
                                 {{
                                   Intl.NumberFormat("vi-VN").format(
                                     product.price_retail
@@ -1117,123 +1140,42 @@ export default defineComponent({
         </div>
         <div class="modal-body">
           <div class="row row-cols-3 g-10">
-            <div class="col">
+            <div class="col" v-for="(gift, index) in giftList" :key="index">
               <div class="pd-item pd-item--gift pd-item--sm-2">
                 <div class="pd-item__top">
                   <div class="pd-item__top__img ratio">
-                    <img
-                      :src="`${baseUrl}/1111111111111111111/images/pd-1.jpg`"
-                      alt=""
-                    />
+                    <img :src="gift.image" alt="" />
                   </div>
-                  <div class="pd-item__top__tag">New</div>
-                  <a
-                    href="#"
-                    class="pd-item__top__icon pd-item__top__icon--heart"
-                  >
+                  <div class="pd-item__top__tag" v-if="gift.id_new">New</div>
+                  <div class="pd-item__top__icon pd-item__top__icon--heart">
                     <i class="far fa-heart"></i>
-                  </a>
+                  </div>
                 </div>
                 <div class="pd-item__bottom">
                   <p class="pd-item__bottom__title">
-                    <a href="#">POLO SIPA</a>
+                    <a :href="`san-pham/${gift.product_url}`">{{
+                      gift.title
+                    }}</a>
                   </p>
-                  <p class="pd-item__bottom__desc">Áo polo phối màu trơn</p>
+                  <p class="pd-item__bottom__desc">{{ gift.sub_title }}</p>
                   <p class="pd-item__bottom__price">
                     <span class="pd-item__bottom__price__new">0đ</span>
-                    <del class="pd-item__bottom__price__old">700.000đ</del>
+                    <del class="pd-item__bottom__price__old"
+                      ><del
+                        >{{
+                          Intl.NumberFormat("vi-VN").format(gift.price_retail)
+                        }}đ</del
+                      ></del
+                    >
                   </p>
                   <p class="pd-item__bottom__note">
-                    Áp dụng cho đơn hàng trên 600k
+                    Áp dụng cho đơn hàng trên
+                    {{ Intl.NumberFormat("vi-VN").format(gift.range_from) }}đ
                   </p>
                   <button
                     type="button"
                     class="pd-item__bottom__select btn btn-dark"
-                    data-bs-toggle="modal"
-                    data-bs-dismiss="modal"
-                    data-bs-target="#addToCartGiftModal"
-                  >
-                    Chọn
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="pd-item pd-item--gift pd-item--sm-2">
-                <div class="pd-item__top">
-                  <div class="pd-item__top__img ratio">
-                    <img
-                      :src="`${baseUrl}/1111111111111111111/images/pd-2.jpg`"
-                      alt=""
-                    />
-                  </div>
-                  <div class="pd-item__top__tag">New</div>
-                  <a
-                    href="#"
-                    class="pd-item__top__icon pd-item__top__icon--heart"
-                  >
-                    <i class="far fa-heart"></i>
-                  </a>
-                </div>
-                <div class="pd-item__bottom">
-                  <p class="pd-item__bottom__title">
-                    <a href="#">POLO SIPA</a>
-                  </p>
-                  <p class="pd-item__bottom__desc">Áo polo phối màu trơn</p>
-                  <p class="pd-item__bottom__price">
-                    <span class="pd-item__bottom__price__new">0đ</span>
-                    <del class="pd-item__bottom__price__old">700.000đ</del>
-                  </p>
-                  <p class="pd-item__bottom__note">
-                    Áp dụng cho đơn hàng trên 600k
-                  </p>
-                  <button
-                    type="button"
-                    class="pd-item__bottom__select btn btn-dark"
-                    data-bs-toggle="modal"
-                    data-bs-dismiss="modal"
-                    data-bs-target="#addToCartGiftModal"
-                  >
-                    Chọn
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="pd-item pd-item--gift pd-item--sm-2">
-                <div class="pd-item__top">
-                  <div class="pd-item__top__img ratio">
-                    <img
-                      :src="`${baseUrl}/1111111111111111111/images/pd-3.jpg`"
-                      alt=""
-                    />
-                  </div>
-                  <div class="pd-item__top__tag">New</div>
-                  <a
-                    href="#"
-                    class="pd-item__top__icon pd-item__top__icon--heart"
-                  >
-                    <i class="far fa-heart"></i>
-                  </a>
-                </div>
-                <div class="pd-item__bottom">
-                  <p class="pd-item__bottom__title">
-                    <a href="#">POLO SIPA</a>
-                  </p>
-                  <p class="pd-item__bottom__desc">Áo polo phối màu trơn</p>
-                  <p class="pd-item__bottom__price">
-                    <span class="pd-item__bottom__price__new">0đ</span>
-                    <del class="pd-item__bottom__price__old">700.000đ</del>
-                  </p>
-                  <p class="pd-item__bottom__note">
-                    Áp dụng cho đơn hàng trên 600k
-                  </p>
-                  <button
-                    type="button"
-                    class="pd-item__bottom__select btn btn-dark"
-                    data-bs-toggle="modal"
-                    data-bs-dismiss="modal"
-                    data-bs-target="#addToCartGiftModal"
+                    @click="() => viewDetail(gift, true, 2, true, giftSelected.product_id)"
                   >
                     Chọn
                   </button>
@@ -1248,63 +1190,77 @@ export default defineComponent({
 
   <!-- PACK DETAIL MODAL -->
   <div
-    class="modal fade modal-bottom modal-bottom--fit pack-detail-modal"
+    class="modal fade pack-detail-modal"
     id="packDetailModal"
     tabindex="-1"
     aria-labelledby="packDetailModalLabel"
     aria-hidden="true"
   >
-    <div class="modal-dialog modal-dialog-scrollable">
-      <form action="" id="packDetailForm">
-        <div class="modal-content">
-          <div class="modal-header">
-            <p class="modal-title">CHỌN HỘP ĐÓNG GÓI</p>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body pb-25">
-            <div class="pack-detail">
-              <div
-                class="scroll-snap pack-detail__slider js-gallery-2"
-                data-thumb='[{"src":"images/video.mp4","thumb":"images/detail-1.jpg`", "type": "video"}, {"src":"images/detail-2.jpg`","thumb":"images/detail-2.jpg`", "type": "image"}, {"src":"images/detail-3.jpg`","thumb":"images/detail-3.jpg`", "type": "image"}, {"src":"images/detail-4.jpg`","thumb":"images/detail-4.jpg`", "type": "image"}, {"src":"images/detail-5.jpg`","thumb":"images/detail-5.jpg`", "type": "image"}, {"src":"images/detail-6.jpg`","thumb":"images/detail-6.jpg`", "type": "image"}, {"src":"images/detail-1.jpg`","thumb":"images/detail-1.jpg`", "type": "image"}, {"src":"images/detail-2.jpg`","thumb":"images/detail-2.jpg`", "type": "image"}, {"src":"images/detail-3.jpg`","thumb":"images/detail-3.jpg`", "type": "image"}, {"src":"images/detail-4.jpg`","thumb":"images/detail-4.jpg`", "type": "image"}, {"src":"images/detail-5.jpg`","thumb":"images/detail-5.jpg`", "type": "image"}, {"src":"images/detail-6.jpg`","thumb":"images/detail-6.jpg`", "type": "image"}]'
-              >
-                <div
-                  class="scroll-snap__item js-gallery__item"
-                  v-for="(image, index) in boxDetail.images"
-                  :key="index"
-                >
-                  <div class="ratio">
-                    <img :src="image" alt="" />
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <p class="modal-title">HỘP GIFT BOX</p>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body" v-if="boxDetail">
+          <div class="pack-detail">
+            <div
+              class="swiper-init pack-detail__slider js-gallery"
+              id="pack-swipper"
+              :data-thumb="boxDetail.gallery"
+            >
+              <div class="swiper-container" v-if="boxDetail.images">
+                <div class="swiper-wrapper">
+                  <div
+                    class="swiper-slide"
+                    v-for="(image, index) in boxDetail.images"
+                    :key="index"
+                  >
+                    <div class="ratio js-gallery__item">
+                      <img :src="image" alt="" />
+                    </div>
                   </div>
                 </div>
+                <div
+                  class="swiper-button-prev swiper-button-prev--2"
+                  :style="{
+                    backgroundImage: `url(${baseUrl}/1111111111111111111/images/long-arrow-prev.svg)`,
+                  }"
+                ></div>
+                <div
+                  class="swiper-button-next swiper-button-next--2"
+                  :style="{
+                    backgroundImage: `url(${baseUrl}/1111111111111111111/images/long-arrow-next.svg)`,
+                  }"
+                ></div>
               </div>
-              <p class="pack-detail__title">{{ boxDetail.title }}</p>
-              <div class="pack-detail__price">
-                {{ Intl.NumberFormat("vi-VN").format(boxDetail.price_retail) }}đ
-              </div>
-              <p class="pack-detail__desc">
-                {{ boxDetail.sub_title }}
-              </p>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button
-              class="btn btn-primary"
-              @click.prevent="() => onPackChange(boxDetail.product_id)"
-            >
-              {{
-                boxDetail.product_id === boxSelected
-                  ? "Đã chọn"
-                  : "Chọn hộp này"
-              }}
-            </button>
+            <p class="pack-detail__title">{{ boxDetail.title }}</p>
+            <div class="pack-detail__price">
+              {{ Intl.NumberFormat("vi-VN").format(boxDetail.price_retail) }}đ
+            </div>
+            <p class="pack-detail__desc">
+              {{ boxDetail.sub_title }}
+            </p>
           </div>
         </div>
-      </form>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-primary modal-footer__btn"
+            @click.prevent="() => onPackChange(boxDetail.product_id)"
+          >
+            {{
+              boxDetail.product_id === boxSelected ? "Đã chọn" : "Chọn hộp này"
+            }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

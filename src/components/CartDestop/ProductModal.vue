@@ -11,6 +11,13 @@ import {
 import { useStore } from "vuex";
 import { getProductDetail } from "../../api";
 import { getSizeDetail } from "../../api/order";
+import { countdownInit } from "../../helper/countDown";
+import {
+  createSwipper,
+  createSwipper2,
+  createSwipper3,
+} from "../../helper/createSwipper";
+
 export default defineComponent({
   props: ["data", "baseUrl", "productEditId", "isEdit"],
   emits: ["updateCart"],
@@ -26,10 +33,15 @@ export default defineComponent({
     const weight = ref(0);
     const variations = ref([]);
     const voucherList = computed(() => store.state.voucherList);
+    const flashSaleCountDown = ref(null);
+    const productDetailVoucherSwiper = ref(null);
+    const productDetailImagesSwiper = ref(null);
 
     watch(
       () => props.data,
       () => {
+        colorSelect.value = "";
+        sizeSelect.value = "";
         const { isEdit, productEditId, data } = props;
         if (isEdit && data.variations) {
           variations.value = data.variations;
@@ -43,6 +55,10 @@ export default defineComponent({
             sizeSelect.value = product.attribute2_id;
           }
         }
+
+        setTimeout(() => {
+          createSwipp();
+        }, 500);
       }
     );
 
@@ -55,11 +71,29 @@ export default defineComponent({
       }
     });
 
-    onUpdated(() => {
-      setTimeout(() => {
-        // create();
-      }, 1000);
-    });
+    const createSwipp = () => {
+      if (productDetailVoucherSwiper.value) {
+        productDetailVoucherSwiper.value.destroy();
+      }
+
+      if (productDetailImagesSwiper.value) {
+        productDetailImagesSwiper.value.destroy();
+      }
+
+      const el1 = document.getElementById("voucher-slider");
+
+      if (el1) {
+        const swiper = createSwipper(el1);
+        productDetailVoucherSwiper.value = swiper;
+      }
+
+      const el2 = document.getElementById("product-image__swipper");
+
+      if (el2) {
+        const swiper = createSwipper2(el2);
+        productDetailImagesSwiper.value = swiper;
+      }
+    };
 
     const recomment = computed(() => {
       const weightFormat = Number(weight.value);
@@ -154,27 +188,47 @@ export default defineComponent({
       );
     });
 
+    const productImages = computed(() => {
+      if (!props.data || Object.keys(props.data).length === 0) {
+        return [];
+      }
+
+      return props.data.product_media;
+    });
+
     const productSelect = computed(() => {
-      if (!props.data) {
+      if (!props.data || Object.keys(props.data).length === 0) {
         return {};
       }
 
-      if (!colorSelect.value && !sizeSelect.value && !props.data.variations) {
-        return props.data;
+      let result = {};
+
+      if (!colorSelect.value || !sizeSelect.value || !props.data.variations) {
+        result = props.data;
+      } else {
+        const product = props.data.variations.find(
+          (x) =>
+            x.attribute1_id === colorSelect.value &&
+            x.attribute2_id === sizeSelect.value &&
+            x.actual_remain_quantity > 0
+        );
+
+        if (product) {
+          result = product;
+        }
       }
 
-      const product = props.data.variations.find(
-        (x) =>
-          x.attribute1_id === colorSelect.value &&
-          x.attribute2_id === sizeSelect.value &&
-          x.actual_remain_quantity > 0
-      );
-
-      if (product) {
-        return product;
+      if (result.flash_sale_id) {
+        setTimeout(() => {
+          const el = document.getElementById("flash-sale-count-down");
+          if (el) {
+            clearInterval(flashSaleCountDown.value);
+            flashSaleCountDown.value = countdownInit(el);
+          }
+        }, 0);
       }
 
-      return {};
+      return result;
     });
 
     const price = computed(() => {
@@ -185,6 +239,7 @@ export default defineComponent({
       return {
         price_retail: props.data.price_retail,
         price_sale: props.data.price_sale,
+        flash_sale_price: props.data.flash_sale_price,
       };
     });
 
@@ -238,6 +293,7 @@ export default defineComponent({
     };
 
     const onSubmit = () => {
+      clearInterval(flashSaleCountDown.value);
       emit("updateCart", productSelect.value.product_id);
     };
 
@@ -254,6 +310,7 @@ export default defineComponent({
       voucherList,
       colorSelect,
       hasVariation,
+      productImages,
       productSelect,
       onColorChange,
       onSizeChange,
@@ -269,7 +326,7 @@ export default defineComponent({
     <div class="modal-dialog modal-dialog-centered modal-dialog--937">
       <div class="modal-content">
         <div class="modal-body">
-          <div class="fast-buy">
+          <div class="fast-buy" v-if="Object.keys(data).length > 0">
             <div class="fast-buy__left">
               <div class="fast-buy__favorite">
                 <i class="far fa-heart"></i>
@@ -294,7 +351,7 @@ export default defineComponent({
                   <div class="swiper-wrapper">
                     <div
                       class="swiper-slide"
-                      v-for="(media, index) in data.product_media"
+                      v-for="(media, index) in productImages"
                       :key="index"
                     >
                       <div class="fast-buy__img">
@@ -319,156 +376,217 @@ export default defineComponent({
                   class="add-to-cart-modal-img"
                 />
               </div>
-              <!-- SẢN PHẨM KHÔNG FLASH SALE -->
-              <!--                        <div class="mb-12">-->
-              <!--                            <div class="row gx-3">-->
-              <!--                                <div class="col-10">-->
-              <!--                                    <p class="pd-detail__title">Monogram Print Cotton Piqué Oversized Polo Shirt</p>-->
-              <!--                                </div>-->
-              <!--                                <div class="col-2 text-end">-->
-              <!--                                    <div class="pd-badge">NEW</div>-->
-              <!--                                </div>-->
-              <!--                            </div>-->
-              <!--                        </div>-->
-              <!--                        <div class="py-12 mb-35 border-top border-bottom border-C0">-->
-              <!--                            <div class="row align-items-center gx-3">-->
-              <!--                                <div class="col-6">-->
-              <!--                                    <div class="pd-detail__price">-->
-              <!--                                        <p class="pd-detail__price__new"><span>500.000 đ</span> <span class="m-badge">-50%</span>-->
-              <!--                                        </p>-->
-              <!--                                        <p class="pd-detail__price__old">750.000 đ</p>-->
-              <!--                                    </div>-->
-              <!--                                </div>-->
-              <!--                                <div class="col-6 text-end">-->
-              <!--                                    <div class="pd-detail__rating">-->
-              <!--                                        <div class="rating-stars">-->
-              <!--                                            <div class="empty-stars">-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                            </div>-->
-              <!--                                            <div class="filled-stars" style="width: 80%;">-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                                <i class="far fa-star"></i>-->
-              <!--                                            </div>-->
-              <!--                                        </div>-->
-              <!--                                        <span>4.5 (20 đánh giá)</span>-->
-              <!--                                    </div>-->
-              <!--                                    <div class="pd-detail__purchases">-->
-              <!--                                        <i class="fas fa-shopping-cart"></i> 10 lượt mua &nbsp | &nbsp <span-->
-              <!--                                            class="fw-semi">Còn hàng</span>-->
-              <!--                                    </div>-->
-              <!--                                </div>-->
-              <!--                            </div>-->
-              <!--                        </div>-->
-              <!-- END SẢN PHẨM KHÔNG FLASH SALE -->
-
               <!-- SẢN PHẨM FLASH SALE -->
-              <div class="mb-12">
-                <div class="row gx-3">
-                  <div class="col-10">
-                    <p class="pd-detail__title">
-                      Monogram Print Cotton Piqué Oversized Polo Shirt
-                    </p>
-                    <div
-                      class="pd-detail__rating pd-detail__rating--flash-sale"
-                    >
-                      <div class="rating-stars">
-                        <div class="empty-stars">
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                        </div>
-                        <div
-                          class="filled-stars"
-                          :style="`width: ${(data.rating_start / 5) * 100}%`"
-                        >
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                        </div>
-                      </div>
-                      <span
-                        >{{ data.rating_start }} ({{ data.total_comment }} đánh
-                        giá)</span
-                      >
-                    </div>
-                  </div>
-                  <div class="col-2 text-end">
-                    <div class="pd-badge" v-if="data.is_new">NEW</div>
-                    <div
-                      class="pd-badge pd-badge--best-seller"
-                      v-if="data.is_hot"
-                    >
-                      <div>BEST</div>
-                      <div>SELLER</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flash-sale-box px-10 mb-35">
-                <div class="flash-sale-box__left">
-                  <div class="flash-sale-box__title">
-                    <img
-                      :src="`${baseUrl}/1111111111111111111/images/light.svg`"
-                      alt=""
-                    />
-                    FLASH SALE
-                  </div>
-                  <div class="flash-sale-box__price">
-                    <p class="flash-sale-box__price__old">750.000 đ</p>
-                    <p class="flash-sale-box__price__new">500.000 đ</p>
-                    <span
-                      class="
-                        m-badge m-badge--white
-                        flash-sale-box__price__badge
-                      "
-                      >-50%</span
-                    >
-                  </div>
-                </div>
-                <div class="flash-sale-box__right">
-                  <div class="flash-sale-box__countdown">
-                    <div class="flash-sale-box__countdown__title">
-                      Kết thúc trong
-                    </div>
-                    <div class="flash-sale-box__countdown__content">
+              <div>
+                <div class="mb-12">
+                  <div class="row gx-3">
+                    <div class="col-10">
+                      <p class="pd-detail__title">
+                        {{ data.product_lang && data.product_lang[0].title }}
+                      </p>
                       <div
-                        class="countdown countdown--sm countdown--outline"
-                        data-countdown="2021/09/30 23:00:00"
+                        class="pd-detail__rating pd-detail__rating--flash-sale"
                       >
-                        <div class="countdown__number countdown__hours">
-                          <span>0</span>
-                          <span>0</span>
+                        <div class="rating-stars">
+                          <div class="empty-stars">
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
+                          <div
+                            class="filled-stars"
+                            :style="`width: ${(data.rating_start / 5) * 100}%`"
+                          >
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
                         </div>
-                        :
-                        <div class="countdown__number countdown__minutes">
-                          <span>0</span>
-                          <span>0</span>
-                        </div>
-                        :
-                        <div class="countdown__number countdown__seconds">
-                          <span>0</span>
-                          <span>0</span>
-                        </div>
+                        <span
+                          >{{ data.rating_start }} ({{
+                            data.total_comment
+                          }}
+                          đánh giá)</span
+                        >
+                      </div>
+                    </div>
+                    <div class="col-2 text-end">
+                      <div class="pd-badge" v-if="data.is_new">NEW</div>
+                      <div
+                        class="pd-badge pd-badge--best-seller"
+                        v-if="data.is_hot"
+                      >
+                        <div>BEST</div>
+                        <div>SELLER</div>
                       </div>
                     </div>
                   </div>
-                  <div class="flash-sale-box__purchases">
-                    <i class="fas fa-shopping-cart"></i> 10 lượt mua
+                </div>
+                <!-- FLASH SALE -->
+                <div
+                  class="flash-sale-box px-10 mb-35"
+                  v-if="productSelect.flash_sale_id"
+                >
+                  <div class="flash-sale-box__left">
+                    <div class="flash-sale-box__title">
+                      <img
+                        :src="`${baseUrl}/1111111111111111111/images/light.svg`"
+                        alt=""
+                      />
+                      FLASH SALE
+                    </div>
+                    <div class="flash-sale-box__price">
+                      <p class="flash-sale-box__price__old">
+                        {{
+                          Intl.NumberFormat("vi-VN").format(price.price_retail)
+                        }}đ
+                      </p>
+                      <p class="flash-sale-box__price__new">
+                        {{
+                          Intl.NumberFormat("vi-VN").format(
+                            price.flash_sale_price
+                          )
+                        }}đ
+                      </p>
+                      <span
+                        class="
+                          m-badge m-badge--white
+                          flash-sale-box__price__badge
+                        "
+                        >-{{
+                          Math.round(
+                            ((price.price_retail - price.flash_sale_price) /
+                              price.price_retail) *
+                              100
+                          )
+                        }}%</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flash-sale-box__right">
+                    <div class="flash-sale-box__countdown">
+                      <div class="flash-sale-box__countdown__title">
+                        Kết thúc trong
+                      </div>
+                      <div class="flash-sale-box__countdown__content">
+                        <div
+                          class="countdown countdown--sm countdown--outline"
+                          id="flash-sale-count-down"
+                          :data-countdown="productSelect.flash_sale_end_date"
+                        >
+                          <div class="countdown__number countdown__hours">
+                            <span>0</span>
+                            <span>0</span>
+                          </div>
+                          :
+                          <div class="countdown__number countdown__minutes">
+                            <span>0</span>
+                            <span>0</span>
+                          </div>
+                          :
+                          <div class="countdown__number countdown__seconds">
+                            <span>0</span>
+                            <span>0</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flash-sale-box__purchases">
+                      <i class="fas fa-shopping-cart"></i>
+                      {{
+                        productSelect.flash_sale_amount -
+                        productSelect.flash_sale_remain
+                      }}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="py-12 mb-35 border-top border-bottom border-C0"
+                  v-else
+                >
+                  <div class="row align-items-center gx-3">
+                    <div class="col-6">
+                      <div
+                        class="pd-detail__price"
+                        v-if="price.price_retail != price.price_sale"
+                      >
+                        <p class="pd-detail__price__new">
+                          <span
+                            >{{
+                              Intl.NumberFormat("vi-VN").format(
+                                price.price_sale
+                              )
+                            }}đ</span
+                          >
+                          <span class="m-badge"
+                            >-{{
+                              Math.round(
+                                ((price.price_retail - price.price_sale) /
+                                  price.price_retail) *
+                                  100
+                              )
+                            }}%</span
+                          >
+                        </p>
+                        <p class="pd-detail__price__old">
+                          {{
+                            Intl.NumberFormat("vi-VN").format(
+                              price.price_retail
+                            )
+                          }}đ
+                        </p>
+                      </div>
+                      <div class="pd-detail__price" v-else>
+                        <p class="pd-detail__price__new">
+                          {{
+                            Intl.NumberFormat("vi-VN").format(
+                              price.price_retail
+                            )
+                          }}đ
+                        </p>
+                      </div>
+                    </div>
+                    <div class="col-6 text-end">
+                      <div class="pd-detail__rating">
+                        <div class="rating-stars">
+                          <div class="empty-stars">
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
+                          <div
+                            class="filled-stars"
+                            :style="`width: ${(data.rating_start / 5) * 100}%`"
+                          >
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
+                        </div>
+                        <span
+                          >{{ data.rating_start }} ({{
+                            data.total_comment
+                          }}
+                          đánh giá)</span
+                        >
+                      </div>
+                      <div class="pd-detail__purchases">
+                        <i class="fas fa-shopping-cart"></i>
+                        {{ data.total_qty_export }} lượt mua
+                        <span class="fw-semi">Còn hàng</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <!-- END SẢN PHẨM FLASH SALE -->
               <div class="mb-40">
                 <p class="fz-12 fw-bold mb-12">VÌ SAO BẠN NÊN CHỌN</p>
                 <ul class="reason-nav">
@@ -678,22 +796,17 @@ export default defineComponent({
                     w-100
                     add-to-cart-modal-btn
                   "
-                  :disabled="!productSelect.product_id || !hasVariation"
+                  :disabled="!productSelect.product_id"
                   @click="onSubmit"
                 >
-                  {{
-                    isEdit
-                      ? !hasVariation
-                        ? "ĐÃ CHỌN"
-                        : "CẬP NHẬP"
-                      : "THÊM VÀO GIỎ"
-                  }}
+                  {{ isEdit ? "CẬP NHẬP" : "THÊM VÀO GIỎ" }}
                 </button>
               </div>
               <div class="mb-25 text-center">
                 <a
-                  href="chi-tiet-san-pham.html"
+                  :href="`/san-pham/${data.product_router}`"
                   class="fz-12 fw-medium text-decoration-underline"
+                  v-if="data.product_router"
                   >Xem chi tiết</a
                 >
               </div>

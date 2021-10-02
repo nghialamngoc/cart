@@ -652,7 +652,7 @@ export default defineComponent({
     <section
       class="section py-30"
       id="productForYou"
-      v-if="collection.products && collection.products.length > 0"
+      v-if="collection && collection.length > 0"
     >
       <div class="container-fluid">
         <div class="heading">
@@ -665,7 +665,7 @@ export default defineComponent({
                 <div class="swiper-wrapper gx-10">
                   <div
                     class="swiper-slide"
-                    v-for="(product, index) in collection.products"
+                    v-for="(product, index) in collection"
                     :key="index"
                     @click="() => viewDetail(product, false, 1)"
                   >
