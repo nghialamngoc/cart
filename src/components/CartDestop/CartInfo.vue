@@ -60,7 +60,7 @@ export default defineComponent({
     onMounted(() => {
       setTimeout(() => {
         const collectionSwipper = document.getElementById("collection-swipper");
-        if (collectionSwipper && collection.value.length > 3) {
+        if (collectionSwipper && collection.value.length >= 3) {
           createSwipper3(collectionSwipper);
         }
       }, 1000);

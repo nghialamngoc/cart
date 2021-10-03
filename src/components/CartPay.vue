@@ -1,20 +1,28 @@
 <script>
 import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
-import SelectCity from "./SelectCity.vue";
-import SelectDistrict from "./SelectDistrict.vue";
-import SelectCommune from "./SelectCommune.vue";
-import { money, date } from "../helper/format";
-import { closeModal, openModal } from "../helper/modal";
 import { useStore } from "vuex";
-import { baseUrl } from "../constant";
+
+// Api
 import { getPaymentMethodList, updateCartShippingAddress } from "../api";
 import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 
+// Helper
+import { closeModal, openModal } from "../helper/modal";
+import { money, date } from "../helper/format";
+
+// Constant
+import { baseUrl } from "../constant";
+
+// Component
+import CustomerAddress from "./CustomerAddress/CustomerAddress.vue";
+import CustomerNoAddress from "./CustomerAddress/CustomerNoAddress.vue";
+import ShippingInfoNoLogin from "./ShippingInfoNoLogin/ShippingInfoNoLogin.vue";
+
 export default defineComponent({
   components: {
-    SelectCity,
-    SelectDistrict,
-    SelectCommune,
+    CustomerAddress,
+    CustomerNoAddress,
+    ShippingInfoNoLogin,
   },
   setup(props, { emit }) {
     // store
@@ -24,11 +32,11 @@ export default defineComponent({
     const isEdit = computed(() => store.state.isEdit);
     const bankCode = computed(() => store.state.bankCode);
     const cart = computed(() => store.state.cart);
-    const billingAddress = computed(() => store.state.billingAddress);
-    const shippingAddress = computed(() => store.state.shippingAddress);
-    const shippingAddressEdit = ref({});
-    const isValidShippingAddress = computed(
-      () => store.getters.isValidShippingAddress
+    const customerShippingAddress = computed(
+      () => store.state.customerShippingAddress
+    );
+    const isValidCustomerShippingAddress = computed(
+      () => store.getters.isValidCustomerShippingAddress
     );
     const shippingStandard = computed(() => store.state.shippingStandard);
     const shippingType = computed(() => store.state.shippingType);
@@ -37,88 +45,27 @@ export default defineComponent({
     const paymentMethod = computed(() => store.state.paymentMethod);
     const note = computed(() => store.state.note);
     const boxName = computed(() => store.getters.boxName);
+    const customerId = computed(() => store.getters.customerId);
     const paymentMethods = computed(() => store.state.paymentMethods);
     const methodType = computed(() => store.getters.paymentMethodType);
     const ahamove = computed(() => store.state.ahamove);
     const grap = computed(() => store.state.grap);
 
-    const setEdit = () => {
-      shippingAddressEdit.value = {
-        ...shippingAddress.value,
-      };
-      store.commit("setEdit", true);
-    };
-
     // life
     onMounted(async () => {
       //await getShippingSetting();
 
-      await store.dispatch("getBillingAddress");
+      if (customerId.value != "") {
+        await store.dispatch("getCustomerAddressList");
+      }
       await store.dispatch("setDefaultShippingAddress");
       store.dispatch("getShippingStandard");
       getPaymentMethod();
 
-      if (!isValidShippingAddress.value) {
+      if (!isValidCustomerShippingAddress.value) {
         store.commit("setEdit", true);
       }
     });
-
-    const changeAddress = async () => {
-      const {
-        name,
-        address,
-        phone_number,
-        province_id,
-        district_id,
-        commune_id,
-      } = shippingAddressEdit.value;
-      if (
-        !name ||
-        name.trim() === "" ||
-        !address ||
-        address.trim() === "" ||
-        !phone_number ||
-        !province_id ||
-        !district_id ||
-        !commune_id
-      ) {
-        store.dispatch("setError", "Vui lòng điền đầy đủ thông tin nhận hàng!");
-        return;
-      }
-
-      var vnf_regex = /((09|03|07|08|05)+([0-9]{8})\b)/g;
-      if (vnf_regex.test(phone_number) == false) {
-        store.dispatch("setError", "Số điện thoại của bạn không đúng định dạng!");
-        return;
-      }
-
-      try {
-        store.dispatch("setLoading", true);
-        await updateCartShippingAddress({
-          full_name: name,
-          address: address,
-          phone: phone_number.toString(),
-          province_id: province_id,
-          district_id: district_id,
-          commune_id: commune_id,
-          is_default: false,
-        });
-
-        await store.dispatch("getCart");
-        await store.dispatch("setDefaultShippingAddress");
-        await store.dispatch("ahomoveShippingFee");
-
-        if (!ahamove.value || !ahamove.value.total_price) {
-          store.commit("setQuickShippingType", 0);
-        }
-
-        store.commit("setEdit", false);
-      } catch (err) {
-        store.dispatch("setError", resolveErrorMessage(err));
-      } finally {
-        store.dispatch("setLoading", false);
-      }
-    };
 
     const getPaymentMethod = async () => {
       try {
@@ -131,53 +78,6 @@ export default defineComponent({
       } catch (err) {
         //
       }
-    };
-
-    const onSelectProvince = ({ id, name }) => {
-      shippingAddressEdit.value.province_id = id;
-      shippingAddressEdit.value.province_name = name;
-
-      resetDistrict();
-      closeModal("cityModal");
-      openModal("districtModal");
-    };
-
-    const onSelectDistrict = ({ id, name }) => {
-      shippingAddressEdit.value.district_id = id;
-      shippingAddressEdit.value.district_name = name;
-
-      resetCommune();
-      closeModal("districtModal");
-      openModal("wardModal");
-    };
-
-    const onSelectCommune = ({ id, name }) => {
-      shippingAddressEdit.value.commune_id = id;
-      shippingAddressEdit.value.commune_name = name;
-
-      closeModal("wardModal");
-    };
-
-    const resetDistrict = () => {
-      shippingAddressEdit.value.district_id = "";
-      shippingAddressEdit.value.district_name = "";
-      shippingAddressEdit.value.commune_id = "";
-      shippingAddressEdit.value.commune_name = "";
-    };
-
-    const resetCommune = () => {
-      shippingAddressEdit.value.commune_id = "";
-      shippingAddressEdit.value.commune_name = "";
-    };
-
-    const goBackSelectProvince = () => {
-      closeModal("districtModal");
-      openModal("cityModal");
-    };
-
-    const goBackSelectDistrict = () => {
-      closeModal("wardModal");
-      openModal("districtModal");
     };
 
     const changeShippingType = async (value) => {
@@ -239,31 +139,24 @@ export default defineComponent({
       boxName,
       ahamove,
       bankCode,
+      customerId,
       methodType,
       isFreeShip,
       shippingType,
       paymentMethod,
       paymentMethods,
-      billingAddress,
-      shippingAddress,
+      customerShippingAddress,
       shippingStandard,
       quickShippingType,
-      shippingAddressEdit,
 
       date,
       money,
-      setEdit,
       openModal,
       changeNote,
       onBankChange,
-      changeAddress,
-      onSelectCommune,
-      onSelectDistrict,
-      onSelectProvince,
       changeShippingType,
       changePaymentMethod,
-      goBackSelectProvince,
-      goBackSelectDistrict,
+
       changeQuickShippingType,
     };
   },
@@ -285,155 +178,53 @@ export default defineComponent({
             <h2 class="checkout__head__title">THÔNG TIN NHẬN HÀNG</h2>
           </div>
           <div class="checkout__body checkout__body--outside pt-2">
-            <div id="buyer-info" v-if="!isEdit">
-              <div class="checkout__body__signed">
-                <div class="checkout__body__head">
-                  <div class="checkout__body__head__left">
-                    <p class="checkout__body__title d-flex align-items-center">
-                      {{ shippingAddress.name }}
-                      <span
-                        class="badge badge-blue-custom badge-sm ms-10"
-                        v-if="shippingAddress.is_default"
-                        >Mặc định</span
+            <template v-if="customerId">
+              <div id="buyer-info" v-if="!isEdit">
+                <div class="checkout__body__signed">
+                  <div class="checkout__body__head">
+                    <div class="checkout__body__head__left">
+                      <p
+                        class="checkout__body__title d-flex align-items-center"
                       >
+                        {{ customerShippingAddress.name }}
+                        <span
+                          class="badge badge-blue-custom badge-sm ms-10"
+                          v-if="customerShippingAddress.is_default"
+                          >Mặc định</span
+                        >
+                      </p>
+                    </div>
+                    <div class="checkout__body__head__right">
+                      <button
+                        class="btn btn-fit"
+                        data-bs-toggle="modal"
+                        data-bs-target="#locationModal"
+                      >
+                        <img
+                          :src="`${baseUrl}/1111111111111111111/images/edit-37.svg`"
+                          alt=""
+                          width="18"
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="text-63 ls-20">
+                    <p class="mb-1">
+                      {{ customerShippingAddress.phone_number }}
+                    </p>
+                    <p class="mb-0">
+                      {{ customerShippingAddress.address }}
                     </p>
                   </div>
-                  <div class="checkout__body__head__right">
-                    <button class="btn btn-fit" @click="setEdit">
-                      <img
-                        :src="`${baseUrl}/1111111111111111111/images/edit-37.svg`"
-                        alt=""
-                        width="18"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div class="text-63 ls-20">
-                  <p class="mb-1">
-                    {{ shippingAddress.phone_number }}
-                  </p>
-                  <p class="mb-0">
-                    {{ shippingAddress.address }}
-                  </p>
                 </div>
               </div>
-            </div>
-            <div v-else>
-              <div class="mb-3">
-                <label class="fw-medium">Họ và tên</label>
-                <input
-                  type="text"
-                  class="form-control form-control--underline"
-                  placeholder="VD: Văn Nam"
-                  v-model="shippingAddressEdit.name"
-                />
-                <div class="invalid-feedback"></div>
+              <div v-else>
+                <CustomerNoAddress></CustomerNoAddress>
               </div>
-              <div class="mb-3">
-                <label class="fw-medium">Số điện thoại</label>
-                <input
-                  type="text"
-                  class="form-control form-control--underline"
-                  placeholder="VD: 0905 555 000"
-                  v-model="shippingAddressEdit.phone_number"
-                />
-                <div class="invalid-feedback"></div>
-              </div>
-              <div class="mb-3" style="position: relative">
-                <label class="fw-medium">Địa chỉ (gồm số nhà, tên đường)</label>
-                <input
-                  type="text"
-                  class="
-                    form-control form-control--underline form-control--icon
-                  "
-                  placeholder="VD: 20 Hai Bà Trưng"
-                  v-model="shippingAddressEdit.address"
-                />
-                <img
-                  :src="`${baseUrl}/1111111111111111111/images/icon-location-2.svg`"
-                  :style="{ position: 'absolute', right: '0', bottom: '10px' }"
-                />
-                <div class="invalid-feedback"></div>
-              </div>
-              <div class="mb-3" style="position: relative">
-                <label class="fw-medium">Tỉnh / thành phố</label>
-                <input
-                  type="text"
-                  class="
-                    form-control form-control--underline form-control--icon
-                  "
-                  placeholder="VD : Hồ Chí Minh"
-                  readonly
-                  v-model="shippingAddressEdit.province_name"
-                  style="background-color: white"
-                  @click="() => openModal('cityModal')"
-                />
-                <img
-                  :src="`${baseUrl}/1111111111111111111/images/icon-dropdown.svg`"
-                  :style="{ position: 'absolute', right: '0', bottom: '10px' }"
-                />
-                <div class="invalid-feedback"></div>
-              </div>
-              <div class="mb-3" style="position: relative">
-                <label class="fw-medium">Quận / huyện</label>
-                <input
-                  type="text"
-                  class="
-                    form-control form-control--underline form-control--icon
-                  "
-                  placeholder="VD: quận Gò Vấp"
-                  id="districtInput"
-                  v-model="shippingAddressEdit.district_name"
-                  :disabled="!shippingAddressEdit.province_name"
-                  readonly
-                  style="background-color: white"
-                  @click="() => openModal('districtModal')"
-                />
-                <img
-                  :src="`${baseUrl}/1111111111111111111/images/icon-dropdown.svg`"
-                  :style="{
-                    position: 'absolute',
-                    right: '0',
-                    bottom: '10px',
-                    opacity: !shippingAddressEdit.province_name ? '0.5' : '1',
-                  }"
-                />
-                <div class="invalid-feedback"></div>
-              </div>
-              <div class="mb-3" style="position: relative">
-                <label class="fw-medium">Phường / xã</label>
-                <input
-                  type="text"
-                  class="
-                    form-control form-control--underline form-control--icon
-                  "
-                  placeholder="VD: phường 11"
-                  v-model="shippingAddressEdit.commune_name"
-                  :disabled="!shippingAddressEdit.district_name"
-                  readonly
-                  style="background-color: white"
-                  @click="() => openModal('wardModal')"
-                />
-                <img
-                  :src="`${baseUrl}/1111111111111111111/images/icon-dropdown.svg`"
-                  :style="{
-                    position: 'absolute',
-                    right: '0',
-                    bottom: '10px',
-                    opacity: !shippingAddressEdit.district_name ? '0.5' : '1',
-                  }"
-                />
-                <div class="invalid-feedback"></div>
-              </div>
-              <div class="mb-0">
-                <button
-                  class="btn btn-outline-37-white fz-14 fw-semi w-100 py-2 ls-0"
-                  @click="changeAddress"
-                >
-                  Lưu thông tin
-                </button>
-              </div>
-            </div>
+            </template>
+            <template v-else>
+              <shipping-info-no-login></shipping-info-no-login>
+            </template>
           </div>
         </section>
       </div>
@@ -862,22 +653,7 @@ export default defineComponent({
     <div class="separate-line"></div>
   </main>
 
-  <!-- Select city -->
-  <SelectCity @onSelect="onSelectProvince" />
-
-  <!-- Select district_name -->
-  <SelectDistrict
-    :province_id="shippingAddressEdit.province_id"
-    @onSelect="onSelectDistrict"
-    @goBack="goBackSelectProvince"
-  />
-
-  <!-- Select commune_name -->
-  <SelectCommune
-    :district_id="shippingAddressEdit.district_id"
-    @onSelect="onSelectCommune"
-    @goBack="goBackSelectDistrict"
-  />
+  <CustomerAddress></CustomerAddress>
 </template>
 
 <style></style>

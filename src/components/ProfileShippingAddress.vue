@@ -2,7 +2,6 @@
 import { defineComponent, onMounted, ref, computed } from "@vue/runtime-core";
 import { baseUrl } from "../constant";
 
-import { date } from "../helper/format";
 import Loading from "./Loading.vue";
 import ErrorDialog from "./ErrorDialog.vue";
 import {
@@ -10,7 +9,6 @@ import {
   deleteCustomerAddress,
   getCustomerInfo,
   updateCustomerAddress,
-  updateCustomerInfo,
   uploadImage,
 } from "../api/account";
 import { closeModal, openModal } from "../helper/modal";

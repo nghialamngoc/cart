@@ -217,6 +217,9 @@ export default {
       province_name,
       district_name,
       commune_name,
+      bill_fullname,
+      bill_phone,
+      type_send,
     } = state.cart;
 
     if (
@@ -228,47 +231,55 @@ export default {
       commune_id != ""
     ) {
       commit("setShippingAddress", {
-        name: fullname,
-        phone_number: phone,
-        address: address,
-        province_id: province_id,
-        province_name: province_name,
-        district_id: district_id,
-        district_name: district_name,
-        commune_id: commune_id,
-        commune_name: commune_name,
+        fullname,
+        phone,
+        address,
+        province_id,
+        province_name,
+        district_id,
+        district_name,
+        commune_id,
+        commune_name,
+        bill_fullname,
+        bill_phone,
+        type_send,
       });
     }
   },
 
-  async getBillingAddress({ commit, getters }, payload) {
+  async getCustomerAddressList({ state, commit, getters }, payload) {
     try {
       commit("setLoading", true);
       const data = await getCustomerAddress(payload);
 
       if (Array.isArray(data) && data.length > 0) {
-        const defaultAddress =
-          data.find((x) => x.is_default === true) || data[0];
+        commit("setCustomerAddressList", data);
 
-        const address = {
-          name: defaultAddress.name,
-          phone_number: defaultAddress.phone_number,
-          address: defaultAddress.address,
-          province_id: defaultAddress.province_id,
-          province_name: defaultAddress.province_name,
-          district_id: defaultAddress.district_id,
-          district_name: defaultAddress.district_name,
-          commune_id: defaultAddress.commune_id,
-          commune_name: defaultAddress.commune_name,
-          address_id: defaultAddress.address_id,
-          customer_id: defaultAddress.customer_id,
-        };
+        if (!state.customerShippingAddress.address_id) {
+          const defaultAddress =
+            data.find((x) => x.is_default === true) || data[0];
 
-        commit("setBillingAddress", address);
+          const address = {
+            address_id: defaultAddress.address_id,
+            name: defaultAddress.name,
+            phone_number: defaultAddress.phone_number,
+            address: defaultAddress.address,
+            province_id: defaultAddress.province_id,
+            province_name: defaultAddress.province_name,
+            district_id: defaultAddress.district_id,
+            district_name: defaultAddress.district_name,
+            commune_id: defaultAddress.commune_id,
+            commune_name: defaultAddress.commune_name,
+            customer_id: defaultAddress.customer_id,
+            is_default: defaultAddress.is_default,
+          };
 
-        if (!getters.isValidShippingAddress) {
-          commit("setShippingAddress", address);
+          commit("setCustomerShippingAddress", address);
         }
+
+        // if (!getters.isValidShippingAddress) {
+        //   commit("setShippingAddress", address);
+        // }
       }
     } catch (err) {
       console.log(err);

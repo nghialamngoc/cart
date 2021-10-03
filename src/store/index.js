@@ -17,6 +17,8 @@ const store = createStore({
     giftList: [],
     collection: {},
     freeShipCondition: {},
+    customerAddressList: [],
+    customerShippingAddress: {},
     billingAddress: {},
     shippingAddress: {},
     shippingStandard: {},

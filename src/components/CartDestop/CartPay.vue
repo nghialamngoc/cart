@@ -53,7 +53,7 @@ export default defineComponent({
     onMounted(async () => {
       //await getShippingSetting();
 
-      await store.dispatch("getBillingAddress");
+      await store.dispatch("getCustomerAddressList");
       await store.dispatch("setDefaultShippingAddress");
       store.dispatch("getShippingStandard");
       getPaymentMethod();

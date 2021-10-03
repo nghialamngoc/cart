@@ -1,0 +1,13 @@
+.customer_default {
+  background-color: #DCF0FF !important;
+  color: #004377 !important;
+}
+
+.address_selected {
+  border-color: #004377 !important;
+  background-color: #FBFDFF !important;
+}
+
+.address_selected > .title {
+  color: #004377 !important;
+}

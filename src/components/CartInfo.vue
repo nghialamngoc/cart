@@ -10,6 +10,7 @@ import { baseUrl } from "../constant";
 // components
 import ProductModal from "./ProductModal.vue";
 import { getProductDetail } from "../api";
+import { createSwipper3 } from "../helper/createSwipper";
 
 export default defineComponent({
   components: {
@@ -43,6 +44,10 @@ export default defineComponent({
     const isEdit = ref(false); // false: new, true: edit
     const productEditId = ref("");
 
+    // swipper
+    const swiperInterval = ref(null)
+    const collectionSwipper = ref(null)
+
     onMounted(() => {
       const a = setInterval(() => {
         const el = document.querySelectorAll(".swiper-vertical");
@@ -64,6 +69,17 @@ export default defineComponent({
           clearInterval(a);
         }
       }, 1000);
+
+      swiperInterval.value = setInterval(() => {
+        if (collectionSwipper.value || collection.value.length < 3) {
+          clearInterval(swiperInterval.value)
+        } else {
+          const el = document.getElementById("collection-swipper");
+          if (el) {
+            collectionSwipper.value = createSwipper3(el);
+          }
+        }
+      }, 100)
     });
 
     // methods
@@ -99,23 +115,25 @@ export default defineComponent({
       }
     };
 
-    const viewDetail = async (product, edit, type, isOpenModal = true) => {
+    const viewDetail = async (product, editId, type, isOpenModal = true) => {
       try {
-        isEdit.value = edit;
         viewType.value = type;
 
-        if (isEdit) {
-          productEditId.value = product.product_id;
+        if (editId) {
+          isEdit.value = true;
+          productEditId.value = editId;
         } else {
+          isEdit.value = false;
           productEditId.value = "";
         }
 
         store.dispatch("setLoading", true);
+        productDetail.value = {};
         await getDetail(
           Number(product.parent_id) ? product.parent_id : product.product_id
         );
 
-        closeModal("giftListModal");
+        closeModal("giftModal");
 
         if (isOpenModal) {
           openModal("addToCartModal");
@@ -298,7 +316,9 @@ export default defineComponent({
             </div>
             <div class="m-cart__info__center">
               <p class="m-cart__title">
-                <a href="#">{{ product.title }}</a>
+                <a :href="`san-pham/${product.product_url}`">{{
+                  product.title
+                }}</a>
               </p>
               <p class="m-cart__price" v-if="product.price_sale != 0">
                 {{ Intl.NumberFormat("vi-VN").format(product.price_sale) }}đ
@@ -314,11 +334,13 @@ export default defineComponent({
             </div>
             <div class="m-cart__info__bottom">
               <div class="m-cart__edit">
-                <div class="m-cart__edit__left">
+                <div
+                  class="m-cart__edit__left"
+                  @click="() => viewDetail(product, product.product_id, 1)"
+                >
                   <button
                     type="button"
                     class="btn m-cart__select m-cart__select--color"
-                    @click="() => viewDetail(product, true, 1)"
                   >
                     Màu
                     <span class="color-circle">
@@ -332,7 +354,6 @@ export default defineComponent({
                   <button
                     type="button"
                     class="btn m-cart__select m-cart__select--size"
-                    @click="() => viewDetail(product, true, 1)"
                   >
                     Size
                     <strong>{{
@@ -400,14 +421,13 @@ export default defineComponent({
             <div class="m-cart__img">
               <img :src="giftSelected.image" alt="" />
             </div>
-            <div
-              class="m-cart__info"
-              @click="() => viewDetail(giftSelected, true, 2)"
-            >
+            <div class="m-cart__info">
               <div class="m-cart__info__top"></div>
               <div class="m-cart__info__center">
                 <p class="m-cart__title">
-                  <a href="#">{{ giftSelected.title }}</a>
+                  <a :href="`san-pham/${giftSelected.product_url}`">{{
+                    giftSelected.title
+                  }}</a>
                 </p>
                 <p class="m-cart__price">
                   0đ
@@ -418,6 +438,10 @@ export default defineComponent({
                     <button
                       type="button"
                       class="btn m-cart__select m-cart__select--color"
+                      @click="
+                        () =>
+                          viewDetail(giftSelected, giftSelected.product_id, 2)
+                      "
                     >
                       Màu
                       <span class="color-circle">
@@ -660,14 +684,16 @@ export default defineComponent({
         </div>
         <div class="row row-cols-1">
           <div class="col pe-0">
-            <div class="swiper-init swiper-42vw shadow-item-slider">
+            <div
+              class="swiper-init swiper-42vw shadow-item-slider"
+              id="collection-swipper"
+            >
               <div class="swiper-container">
                 <div class="swiper-wrapper gx-10">
                   <div
                     class="swiper-slide"
                     v-for="(product, index) in collection"
                     :key="index"
-                    @click="() => viewDetail(product, false, 1)"
                   >
                     <div class="pd-item pd-item--2">
                       <div class="pd-item__top">
@@ -681,6 +707,7 @@ export default defineComponent({
                         </div>
                         <div
                           class="pd-item__top__icon pd-item__top__icon--cart"
+                          @click="() => viewDetail(product, null, 1)"
                         >
                           <img
                             :src="`${baseUrl}/1111111111111111111/images/pd-cart-icon.svg`"
@@ -696,9 +723,13 @@ export default defineComponent({
                           "
                           >Giảm giá</span
                         >
-                        <p class="pd-item__bottom__desc">
+                        <a
+                          :href="`san-pham/${product.slug}`"
+                          class="pd-item__bottom__desc"
+                          style="display: block"
+                        >
                           {{ product.product_title }}
-                        </p>
+                        </a>
                         <p class="pd-item__bottom__price">
                           <del
                             class="pd-item__bottom__price__old"
@@ -709,7 +740,7 @@ export default defineComponent({
                               )
                             }}đ</del
                           >
-                          <span class="pack-item__price__number">
+                          <span class="pack-item__price__number" v-else>
                             {{
                               Intl.NumberFormat("vi-VN").format(
                                 product.price_retail
@@ -1008,7 +1039,7 @@ export default defineComponent({
               <div class="m-cart__info__top"></div>
               <div class="m-cart__info__center">
                 <p class="m-cart__title">
-                  <a href="#">{{ gift.title }}</a>
+                  <a :href="`san-pham/${gift.product_url}`">{{ gift.title }}</a>
                 </p>
                 <p class="m-cart__price">
                   0đ
@@ -1031,7 +1062,9 @@ export default defineComponent({
                     <label class="custom-checkbox m-cart__edit__btn">
                       <span
                         class="checkmark-btn checkmark-btn--2"
-                        @click="() => viewDetail(gift, true, 2)"
+                        @click="
+                          () => viewDetail(gift, giftSelected.product_id, 2)
+                        "
                       >
                         Chọn
                       </span>

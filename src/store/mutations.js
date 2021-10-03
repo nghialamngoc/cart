@@ -103,4 +103,35 @@ export default {
   setAhamove(state, data) {
     state.ahamove = data;
   },
+
+  setCustomerAddressList(state, data) {
+    state.customerAddressList = data;
+  },
+
+  setCustomerShippingAddress(state, data) {
+    state.customerShippingAddress = data;
+  },
+
+  setCustomerShippingAddressById(state, addressId) {
+    const address = state.customerAddressList.find(
+      (x) => x.address_id === addressId
+    );
+
+    if (address) {
+      state.customerShippingAddress = {
+        name: address.name,
+        phone_number: address.phone_number,
+        address: address.address,
+        province_id: address.province_id,
+        province_name: address.province_name,
+        district_id: address.district_id,
+        district_name: address.district_name,
+        commune_id: address.commune_id,
+        commune_name: address.commune_name,
+        address_id: address.address_id,
+        customer_id: address.customer_id,
+        is_default: address.is_default,
+      };
+    }
+  },
 };

@@ -6,6 +6,7 @@ import {
   ref,
   watch,
 } from "@vue/runtime-core";
+import { useStore } from "vuex";
 import { getProductDetail } from "../api";
 import { getSizeDetail } from "../api/order";
 
@@ -13,6 +14,9 @@ export default defineComponent({
   props: ["data", "baseUrl", "productEditId", "isEdit"],
   emits: ["updateCart"],
   setup(props, { emit }) {
+    // store
+    const store = useStore();
+
     // computed
     const colorSelect = ref("");
     const sizeSelect = ref("");
@@ -20,10 +24,16 @@ export default defineComponent({
     const height = ref(0);
     const weight = ref(0);
     const variations = ref([]);
+    const voucherList = computed(() => store.state.voucherList);
+    const flashSaleCountDown = ref(null);
+    const productDetailVoucherSwiper = ref(null);
+    const productDetailImagesSwiper = ref(null);
 
     watch(
       () => props.data,
       () => {
+        colorSelect.value = "";
+        sizeSelect.value = "";
         const { isEdit, productEditId, data } = props;
         if (isEdit && data.variations) {
           variations.value = data.variations;
@@ -37,6 +47,10 @@ export default defineComponent({
             sizeSelect.value = product.attribute2_id;
           }
         }
+
+        setTimeout(() => {
+          createSwipp();
+        }, 500);
       }
     );
 
@@ -47,6 +61,54 @@ export default defineComponent({
       } catch (err) {
         console.log(err);
       }
+    });
+
+    const createSwipp = () => {
+      if (productDetailImagesSwiper.value) {
+        productDetailImagesSwiper.value.destroy();
+      }
+
+      const el = document.getElementById("product-image__swipper");
+
+      if (el) {
+        const swiper = createSwipper2(el);
+        productDetailImagesSwiper.value = swiper;
+      }
+    };
+
+    const gallery = computed(() => {
+      const data = props.data;
+
+      const result = [];
+
+      if (
+        Array.isArray(data.product_videos) &&
+        data.product_videos.length > 0
+      ) {
+        result.push(
+          ...data.product_videos.map((x) => {
+            return {
+              src: x,
+              thumb: x,
+              type: "video",
+            };
+          })
+        );
+      }
+
+      if (Array.isArray(data.product_media) && data.product_media.length > 0) {
+        result.push(
+          ...data.product_media.map((x) => {
+            return {
+              src: x,
+              thumb: x,
+              type: "image",
+            };
+          })
+        );
+      }
+
+      return JSON.stringify(result);
     });
 
     const recomment = computed(() => {
@@ -109,7 +171,7 @@ export default defineComponent({
       for (let index = 0; index < sizeConfig.value.length; index++) {
         const size = sizeConfig.value[index];
         if (size.weight_to > result) {
-          result = size.height_to;
+          result = size.weight_to;
         }
       }
 
@@ -142,27 +204,47 @@ export default defineComponent({
       );
     });
 
+    const productImages = computed(() => {
+      if (!props.data || Object.keys(props.data).length === 0) {
+        return [];
+      }
+
+      return props.data.product_media;
+    });
+
     const productSelect = computed(() => {
-      if (!props.data) {
+      if (!props.data || Object.keys(props.data).length === 0) {
         return {};
       }
 
-      if (!colorSelect.value && !sizeSelect.value && !props.data.variations) {
-        return props.data
+      let result = {};
+
+      if (!colorSelect.value || !sizeSelect.value || !props.data.variations) {
+        result = props.data;
+      } else {
+        const product = props.data.variations.find(
+          (x) =>
+            x.attribute1_id === colorSelect.value &&
+            x.attribute2_id === sizeSelect.value &&
+            x.actual_remain_quantity > 0
+        );
+
+        if (product) {
+          result = product;
+        }
       }
 
-      const product = props.data.variations.find(
-        (x) =>
-          x.attribute1_id === colorSelect.value &&
-          x.attribute2_id === sizeSelect.value &&
-          x.actual_remain_quantity > 0
-      );
-
-      if (product) {
-        return product;
+      if (result.flash_sale_id) {
+        setTimeout(() => {
+          const el = document.getElementById("flash-sale-count-down");
+          if (el) {
+            clearInterval(flashSaleCountDown.value);
+            flashSaleCountDown.value = countdownInit(el);
+          }
+        }, 0);
       }
 
-      return {};
+      return result;
     });
 
     const price = computed(() => {
@@ -173,6 +255,7 @@ export default defineComponent({
       return {
         price_retail: props.data.price_retail,
         price_sale: props.data.price_sale,
+        flash_sale_price: props.data.flash_sale_price,
       };
     });
 
@@ -226,6 +309,7 @@ export default defineComponent({
     };
 
     const onSubmit = () => {
+      clearInterval(flashSaleCountDown.value);
       emit("updateCart", productSelect.value.product_id);
     };
 
@@ -233,14 +317,17 @@ export default defineComponent({
       price,
       height,
       weight,
+      gallery,
       minHeight,
       maxWeight,
       minWeight,
       recomment,
       maxHeight,
       sizeSelect,
+      voucherList,
       colorSelect,
       hasVariation,
+      productImages,
       productSelect,
       onColorChange,
       onSizeChange,
@@ -293,7 +380,7 @@ export default defineComponent({
                     add-to-cart-modal-slider
                     js-gallery-2
                   "
-                  data-thumb='[{"src":"images/video.mp4","thumb":"images/detail-1.jpg", "type": "video"}, {"src":"images/detail-2.jpg","thumb":"images/detail-2.jpg", "type": "image"}, {"src":"images/detail-3.jpg","thumb":"images/detail-3.jpg", "type": "image"}, {"src":"images/detail-4.jpg","thumb":"images/detail-4.jpg", "type": "image"}, {"src":"images/detail-5.jpg","thumb":"images/detail-5.jpg", "type": "image"}, {"src":"images/detail-6.jpg","thumb":"images/detail-6.jpg", "type": "image"}, {"src":"images/detail-1.jpg","thumb":"images/detail-1.jpg", "type": "image"}, {"src":"images/detail-2.jpg","thumb":"images/detail-2.jpg", "type": "image"}, {"src":"images/detail-3.jpg","thumb":"images/detail-3.jpg", "type": "image"}, {"src":"images/detail-4.jpg","thumb":"images/detail-4.jpg", "type": "image"}, {"src":"images/detail-5.jpg","thumb":"images/detail-5.jpg", "type": "image"}, {"src":"images/detail-6.jpg","thumb":"images/detail-6.jpg", "type": "image"}]'
+                  :data-thumb="gallery"
                 >
                   <div
                     class="scroll-snap__item js-gallery__item"
@@ -505,7 +592,7 @@ export default defineComponent({
               justify-content-center
               add-to-cart-modal-btn
             "
-            :disabled="!productSelect.product_id || !hasVariation"
+            :disabled="!productSelect.product_id"
             @click="onSubmit"
           >
             <img
@@ -513,7 +600,7 @@ export default defineComponent({
               alt=""
               class="me-2"
             />
-            {{ isEdit ? !hasVariation ? "Đã chọn" : "Cập nhập" : "Thêm vào giỏ" }}
+            {{ isEdit ? "Cập nhập" : "Thêm vào giỏ" }}
           </button>
         </div>
       </div>

@@ -28,6 +28,10 @@ export default defineComponent({
     const bankCode = computed(() => store.state.bankCode);
     const paymentInfo = computed(() => store.getters.paymentInfo);
     const methodType = computed(() => store.getters.paymentMethodType);
+    const customerId = computed(() => store.getters.customerId);
+    const customerShippingAddress = computed(
+      () => store.state.customerShippingAddress
+    );
 
     const onSubmit = async () => {
       if (step.value === 1) {
@@ -36,21 +40,23 @@ export default defineComponent({
       }
 
       if (step.value === 2) {
-        if (isValidShippingAddress.value && !isEdit.value) {
-          if (
-            shippingType.value == 0 ||
-            (shippingType.value == 2 && quickShippingType.value == 0)
-          ) {
-            store.dispatch("setError", "Vui lòng chọn phương thức giao hàng");
-            return;
-          }
-          await createOrder();
-        } else {
+        if (customerId.value && !customerShippingAddress.address_id) {
           store.dispatch(
             "setError",
             "Vui lòng nhập đầy đủ và lưu thông tin nhận hàng!"
           );
+          return;
+        } else {
         }
+
+        if (
+          shippingType.value == 0 ||
+          (shippingType.value == 2 && quickShippingType.value == 0)
+        ) {
+          store.dispatch("setError", "Vui lòng chọn phương thức giao hàng");
+          return;
+        }
+        await createOrder();
       }
     };
 

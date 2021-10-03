@@ -260,7 +260,11 @@ export const uploadImage = async (file) => {
 
 export const addCustomerAddress = async (payload) => {
   try {
-    await axios.post(`${baseUrl}/customer/api/v1/address/add`, payload);
+    const { data } = await axios.post(
+      `${baseUrl}/customer/api/v1/address/add`,
+      payload
+    );
+    return data;
   } catch (err) {
     return Promise.reject(err);
   }

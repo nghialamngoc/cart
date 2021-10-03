@@ -114,6 +114,21 @@ export default {
     return true;
   },
 
+  isValidCustomerShippingAddress(state) {
+    if (
+      !state.customerShippingAddress.name ||
+      !state.customerShippingAddress.address ||
+      !state.customerShippingAddress.phone_number ||
+      !state.customerShippingAddress.province_id ||
+      !state.customerShippingAddress.district_id ||
+      !state.customerShippingAddress.commune_id
+    ) {
+      return false;
+    }
+
+    return true;
+  },
+
   isValidBillingAddress(state) {
     if (
       !state.billingAddress.name ||
@@ -185,5 +200,17 @@ export default {
     }
 
     return result;
+  },
+
+  customerId(state) {
+    if (
+      !state.cart.customer_id ||
+      state.cart.customer_id === "0" ||
+      state.cart.customer_id === ""
+    ) {
+      return "";
+    }
+
+    return state.cart.customer_id;
   },
 };
