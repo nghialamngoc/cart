@@ -9,9 +9,12 @@ import {
   getCustomerAddress,
   getFreeshipCondition,
   getGiftList,
+  getProductWishedList,
+  getQuickShippingList,
   getShippingStandard,
   getVoucherList,
   replaceProductInCart,
+  setProductWished,
 } from "../api";
 import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 
@@ -36,6 +39,18 @@ export default {
 
       // get collection list
       dispatch("getFreeshipCondition");
+    } catch (err) {
+      commit("setError", true);
+    } finally {
+      commit("setLoading", false);
+    }
+  },
+
+  async getCartInfo({ commit }) {
+    try {
+      commit("setLoading", true);
+      const data = await getCartInfo();
+      commit("setCart", data);
     } catch (err) {
       commit("setError", true);
     } finally {
@@ -206,7 +221,7 @@ export default {
     commit("setCustomerAddress", data);
   },
 
-  setDefaultShippingAddress({ commit, state }) {
+  setGuestShippingInfo({ commit, state }) {
     const {
       fullname,
       phone,
@@ -222,29 +237,20 @@ export default {
       type_send,
     } = state.cart;
 
-    if (
-      phone != "" &&
-      fullname != "" &&
-      address != "" &&
-      province_id != "" &&
-      district_id != "" &&
-      commune_id != ""
-    ) {
-      commit("setShippingAddress", {
-        fullname,
-        phone,
-        address,
-        province_id,
-        province_name,
-        district_id,
-        district_name,
-        commune_id,
-        commune_name,
-        bill_fullname,
-        bill_phone,
-        type_send,
-      });
-    }
+    commit("setGuestShippingInfo", {
+      fullname,
+      phone,
+      address,
+      province_id,
+      province_name,
+      district_id,
+      district_name,
+      commune_id,
+      commune_name,
+      bill_fullname,
+      bill_phone,
+      type_send,
+    });
   },
 
   async getCustomerAddressList({ state, commit, getters }, payload) {
@@ -276,10 +282,6 @@ export default {
 
           commit("setCustomerShippingAddress", address);
         }
-
-        // if (!getters.isValidShippingAddress) {
-        //   commit("setShippingAddress", address);
-        // }
       }
     } catch (err) {
       console.log(err);
@@ -295,8 +297,8 @@ export default {
       const data = await getShippingStandard({
         total_price: state.cart.total_price,
         total_weight: state.cart.weight,
-        province_id: state.shippingAddress.province_id
-          ? state.shippingAddress.province_id.toString()
+        province_id: state.guestShippingInfo.province_id
+          ? state.guestShippingInfo.province_id.toString()
           : "0",
       });
 
@@ -314,31 +316,94 @@ export default {
     }
   },
 
-  async ahomoveShippingFee({ commit, state }) {
-    if (!state.shippingAddress.address || !state.shippingAddress.name) {
-      commit("setError", "Vui lòng điền đẩy đủ thông tin nhận hàng!");
-      return;
+  async ahamoveShippingFee({ commit, state, getters }) {
+    let address = "";
+    let province_name = "";
+    let district_name = "";
+    let commune_name = "";
+    if (getters.customerId) {
+      address = state.customerShippingAddress.address;
+      province_name = state.customerShippingAddress.province_name;
+      district_name = state.customerShippingAddress.district_name;
+      commune_name = state.customerShippingAddress.commune_name;
+    } else {
+      address = state.guestShippingInfo.address;
+      province_name = state.guestShippingInfo.province_name;
+      district_name = state.guestShippingInfo.district_name;
+      commune_name = state.guestShippingInfo.commune_name;
     }
 
     try {
       commit("setLoading", true);
       const { distance, total_price } = await getAhamoShippingFee({
-        address: `${state.shippingAddress.address}, ${state.shippingAddress.province_name}, ${state.shippingAddress.district_name}, ${state.shippingAddress.commune_name}`,
-        name: state.shippingAddress.name,
+        address: `${address}, ${province_name}, ${district_name}, ${commune_name}`,
+        name: state.guestShippingInfo.name,
         remarks: "ahamove",
       });
 
-      if (distance && total_price) {
-        commit("setAhamove", {
-          distance: distance,
-          total_price: total_price,
-        });
-      } else {
-        commit("setAhamove", {});
+      const newData = [...state.quickShippingList];
+      const ahamove = newData.find((x) => x.carrier_code === "AHAMOVE");
+
+      if (ahamove) {
+        if (distance && total_price) {
+          ahamove.distance = distance;
+          ahamove.total_price = total_price;
+        } else {
+          ahamove.distance = null;
+          ahamove.total_price = null;
+        }
+
+        commit("setQuickShippingList", newData);
       }
     } catch (err) {
       console.log(err);
-      commit("setAhamove", {});
+      const newData = [...state.quickShippingList];
+      const ahamove = newData.find((x) => x.carrier_code === "AHAMOVE");
+      if (ahamove) {
+        ahamove.distance = null;
+        ahamove.total_price = null;
+      }
+      commit("setQuickShippingList", newData);
+    } finally {
+      commit("setLoading", false);
+    }
+  },
+
+  async getQuickShippingList({ commit }) {
+    try {
+      commit("setLoading", true);
+      const data = await getQuickShippingList();
+      commit("setQuickShippingList", data);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      commit("setLoading", false);
+    }
+  },
+
+  async getProductWishedList({ commit }) {
+    try {
+      const data = await getProductWishedList();
+
+      if (Array.isArray(data) && data.length > 0) {
+        commit("setProdutWishedList", data);
+      } else {
+        commit("setProdutWishedList", []);
+      }
+    } catch (err) {
+    } finally {
+    }
+  },
+
+  async productWishedClick({ commit, dispatch }, payload) {
+    try {
+      commit("setLoading", true);
+      await setProductWished(payload);
+
+      // get box list
+      dispatch("getProductWishedList");
+    } catch (err) {
+      console.log(err);
     } finally {
       commit("setLoading", false);
     }

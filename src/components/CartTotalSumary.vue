@@ -9,17 +9,14 @@ export default defineComponent({
     const store = useStore();
 
     //state
-    const isEdit = computed(() => store.state.isEdit);
     const cart = computed(() => store.state.cart);
+    const isEdit = computed(() => store.state.isEdit);
     const note = computed(() => store.state.note);
     const step = computed(() => store.state.step);
     const shippingType = computed(() => store.state.shippingType);
     const quickShippingType = computed(() => store.state.quickShippingType);
-    const billingAddress = computed(() => store.state.billingAddress);
-    const shippingAddress = computed(() => store.state.shippingAddress);
-    const isValidShippingAddress = computed(
-      () => store.getters.isValidShippingAddress
-    );
+    const customerId = computed(() => store.getters.customerId);
+    const guestShippingInfo = computed(() => store.state.guestShippingInfo);
     const isFreeShip = computed(() => store.getters.isFreeShip);
     const shippingPrice = computed(() => store.getters.shippingPrice);
     const totalPrice = computed(() => store.getters.totalPrice);
@@ -28,10 +25,10 @@ export default defineComponent({
     const bankCode = computed(() => store.state.bankCode);
     const paymentInfo = computed(() => store.getters.paymentInfo);
     const methodType = computed(() => store.getters.paymentMethodType);
-    const customerId = computed(() => store.getters.customerId);
     const customerShippingAddress = computed(
       () => store.state.customerShippingAddress
     );
+    const productList = computed(() => store.getters.productList);
 
     const onSubmit = async () => {
       if (step.value === 1) {
@@ -40,7 +37,12 @@ export default defineComponent({
       }
 
       if (step.value === 2) {
-        if (customerId.value && !customerShippingAddress.address_id) {
+        if (isEdit.value) {
+          store.dispatch("setError", "Vui lòng lưu thông tin nhận hàng!");
+          return;
+        }
+
+        if (customerId.value && !customerShippingAddress.value.address_id) {
           store.dispatch(
             "setError",
             "Vui lòng nhập đầy đủ và lưu thông tin nhận hàng!"
@@ -62,6 +64,7 @@ export default defineComponent({
 
     const createOrder = async () => {
       const data = cart.value;
+      debugger
       try {
         const payload = {
           cash: 0,
@@ -73,33 +76,13 @@ export default defineComponent({
           is_free_shipping: isFreeShip.value,
           shipping_fee: shippingPrice.value,
           note: note.value,
-          delivery_type: shippingType.value === 1 ? 1 : quickShippingType.value,
+          delivery_type: shippingType.value === 1 ? "1" : quickShippingType.value,
           extend_code: "",
-          bill_full_name: billingAddress.value.customer_id
-            ? billingAddress.value.name
-            : "",
-          bill_phone_number: billingAddress.value.customer_id
-            ? billingAddress.value.phone_number
-            : "",
-          shipping_full_name: shippingAddress.value.name,
-          shipping_phone_number: shippingAddress.value.phone_number,
-          shipping_address: shippingAddress.value.address,
-          shipping_province_id: shippingAddress.value.province_id,
-          shipping_province_name: shippingAddress.value.province_name,
-          shipping_district_id: shippingAddress.value.district_id,
-          shipping_district_name: shippingAddress.value.district_name,
-          shipping_commune_id: shippingAddress.value.commune_id,
-          shipping_commune_name: shippingAddress.value.commune_name,
-          address_id: billingAddress.value.customer_id
-            ? billingAddress.value.address_id
-            : "0",
-          customer_id: billingAddress.value.customer_id
-            ? billingAddress.value.customer_id
-            : "0",
           status: 1,
           payment_method_type: methodType.value,
           bank_code: bankCode.value,
           payment_info: paymentInfo.value,
+          address_id: "0",
           order_detail: data.detail.map((x) => {
             return {
               name: x.title,
@@ -113,6 +96,22 @@ export default defineComponent({
             };
           }),
         };
+
+        if (customerId.value != "") {
+          payload.address_id = customerShippingAddress.value.address_id;
+        } else {
+          if (guestShippingInfo.value.type_send === 1) {
+            payload.guest_info = {
+              ...guestShippingInfo.value,
+              phone: "",
+              fullname: "",
+            };
+          } else {
+            payload.guest_info = {
+              ...guestShippingInfo.value,
+            };
+          }
+        }
 
         store.dispatch("setLoading", true);
         const { is_change, id, redirect } = await addOrder(payload);
@@ -140,6 +139,8 @@ export default defineComponent({
     return {
       step,
       cart,
+      isEdit,
+      productList,
       shippingPrice,
       discount,
       totalPrice,
@@ -151,8 +152,8 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="section py-30">
-    <div class="container-fluid">
+  <div class="section py-30" v-if="productList.length > 0">
+    <div class="container-fluid" v-if="productList.length > 0">
       <div class="row row-cols-2 gx-2 mb-2 align-items-center">
         <div class="col fz-14 fw-medium">Tổng cộng</div>
         <div class="col text-end fz-16 fw-semi">

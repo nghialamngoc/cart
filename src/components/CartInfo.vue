@@ -9,7 +9,7 @@ import { baseUrl } from "../constant";
 
 // components
 import ProductModal from "./ProductModal.vue";
-import { getProductDetail } from "../api";
+import { getProductDetail, setProductWished } from "../api";
 import { createSwipper3 } from "../helper/createSwipper";
 
 export default defineComponent({
@@ -36,6 +36,7 @@ export default defineComponent({
     );
     const validVoucherList = computed(() => store.getters.validVoucherList);
     const freeShipCondition = computed(() => store.state.freeShipCondition);
+    const productWishedList = computed(() => store.state.productWishedList);
 
     const voucherCode = ref("");
     const boxDetail = ref({});
@@ -45,8 +46,8 @@ export default defineComponent({
     const productEditId = ref("");
 
     // swipper
-    const swiperInterval = ref(null)
-    const collectionSwipper = ref(null)
+    const swiperInterval = ref(null);
+    const collectionSwipper = ref(null);
 
     onMounted(() => {
       const a = setInterval(() => {
@@ -72,14 +73,14 @@ export default defineComponent({
 
       swiperInterval.value = setInterval(() => {
         if (collectionSwipper.value || collection.value.length < 3) {
-          clearInterval(swiperInterval.value)
+          clearInterval(swiperInterval.value);
         } else {
           const el = document.getElementById("collection-swipper");
           if (el) {
             collectionSwipper.value = createSwipper3(el);
           }
         }
-      }, 100)
+      }, 100);
     });
 
     // methods
@@ -133,7 +134,7 @@ export default defineComponent({
           Number(product.parent_id) ? product.parent_id : product.product_id
         );
 
-        closeModal("giftModal");
+        closeModal("giftListModal");
 
         if (isOpenModal) {
           openModal("addToCartModal");
@@ -147,11 +148,17 @@ export default defineComponent({
 
     const updateCart = async (newProductId) => {
       try {
+        const product = productList.value.find(
+          (x) =>
+            x.product_id === productEditId.value && x.type === viewType.value
+        );
+
         if (isEdit.value) {
           await store.dispatch("replaceProductInCart", {
             old_product_id: productEditId.value,
             new_product_id: newProductId,
             type: viewType.value,
+            quantity: product ? product.quantity : 1,
           });
         } else {
           await store.dispatch("addProductToCart", {
@@ -162,6 +169,7 @@ export default defineComponent({
         }
       } catch (err) {
         console.log(err);
+        store.dispatch("setError", "Có lỗi xảy ra vui lòng thử lại!");
       } finally {
         closeModal("addToCartModal");
       }
@@ -191,6 +199,26 @@ export default defineComponent({
       document.getElementById("productForYou").scrollIntoView();
     };
 
+    const onHeartClick = async (product_id, is_check) => {
+      try {
+        store.dispatch("setLoading", true);
+        const { data, is_login } = await setProductWished({
+          product_id,
+          is_check,
+        });
+        if (!is_login) {
+          openModal("loginModal");
+        } else {
+          if (Array.isArray(data)) {
+            store.commit("setProdutWishedList", data);
+          }
+        }
+      } catch (err) {
+      } finally {
+        store.dispatch("setLoading", false);
+      }
+    };
+
     return {
       cart,
       isEdit,
@@ -209,12 +237,14 @@ export default defineComponent({
       voucherNormal,
       voucherHotList,
       validVoucherList,
+      productWishedList,
       freeShipCondition,
       vouchersSpecialList,
       buyMore,
       updateCart,
       viewDetail,
       onPackChange,
+      onHeartClick,
       selectVoucher,
       viewDetailPack,
       onQuantityChange,
@@ -225,74 +255,86 @@ export default defineComponent({
 </script>
 
 <template>
-  <main class="main">
-    <div class="section pt-15 pb-20">
-      <div class="container-fluid">
-        <div
-          class="custom-alert mb-10"
-          v-if="cart.customer_id == '0' || cart.customer_id == ''"
-        >
-          <div class="custom-alert__icon">
-            <img :src="`${baseUrl}/1111111111111111111/images/sign-out.svg`" />
+  <div class="section pt-15 pb-20">
+    <div class="container-fluid">
+      <div
+        class="custom-alert mb-10"
+        v-if="cart.customer_id == '0' || cart.customer_id == ''"
+      >
+        <div class="custom-alert__icon">
+          <img :src="`${baseUrl}/1111111111111111111/images/sign-out.svg`" />
+        </div>
+        <div class="custom-alert__content ps-2">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="d-inline-block me-2"
+              >Đăng nhập ngay để nhận ưu đãi</span
+            >
+            <button
+              type="button"
+              class="btn btn-fit fz-14 fw-semi"
+              data-bs-toggle="modal"
+              data-bs-target="#loginModal"
+            >
+              Đăng nhập
+            </button>
           </div>
-          <div class="custom-alert__content ps-2">
-            <div class="d-flex align-items-center justify-content-between">
-              <span class="d-inline-block me-2"
-                >Đăng nhập ngay để nhận ưu đãi</span
-              >
-              <button
-                type="button"
-                class="btn btn-fit fz-14 fw-semi"
-                data-bs-toggle="modal"
-                data-bs-target="#loginModal"
-              >
-                Đăng nhập
-              </button>
+        </div>
+      </div>
+      <div
+        class="row gx-2 align-items-center"
+        v-if="freeShipCondition.shipping_id"
+      >
+        <div class="col">
+          <div class="d-flex align-items-center">
+            <img
+              class="flex-shrink-0 me-10"
+              :src="`${baseUrl}/1111111111111111111/images/transport-37.svg`"
+              alt=""
+            />
+            <div
+              class="flex-grow-1"
+              v-if="freeShipCondition.range_from > cart.total_price"
+            >
+              <p class="mb-0">
+                Mua thêm
+                {{
+                  Intl.NumberFormat("vi-VN").format(
+                    freeShipCondition.range_from - cart.total_price
+                  )
+                }}đ để hưởng
+              </p>
+              <p class="mb-0 fw-semi">VẬN CHUYỂN MIỄN PHÍ</p>
+            </div>
+            <div class="flex-grow-1" v-else>
+              <p class="mb-0">Đơn hàng của bạn được hưởng</p>
+              <p class="mb-0 fw-semi">VẬN CHUYỂN MIỄN PHÍ</p>
             </div>
           </div>
         </div>
-        <div
-          class="row gx-2 align-items-center"
-          v-if="freeShipCondition.shipping_id"
-        >
-          <div class="col">
-            <div class="d-flex align-items-center">
-              <img
-                class="flex-shrink-0 me-10"
-                :src="`${baseUrl}/1111111111111111111/images/transport-37.svg`"
-                alt=""
-              />
-              <div
-                class="flex-grow-1"
-                v-if="freeShipCondition.range_from > cart.total_price"
-              >
-                <p class="mb-0">
-                  Mua thêm
-                  {{
-                    Intl.NumberFormat("vi-VN").format(
-                      freeShipCondition.range_from - cart.total_price
-                    )
-                  }}đ để hưởng
-                </p>
-                <p class="mb-0 fw-semi">VẬN CHUYỂN MIỄN PHÍ</p>
-              </div>
-              <div class="flex-grow-1" v-else>
-                <p class="mb-0">Đơn hàng của bạn được hưởng</p>
-                <p class="mb-0 fw-semi">VẬN CHUYỂN MIỄN PHÍ</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-auto">
-            <div
-              class="btn btn-icon-end btn-fit text-primary fw-semi"
-              @click="buyMore"
-            >
-              Mua thêm <i class="fas fas fa-chevron-right"></i>
-            </div>
+        <div class="col-auto">
+          <div
+            class="btn btn-icon-end btn-fit text-primary fw-semi"
+            @click="buyMore"
+          >
+            Mua thêm <i class="fas fas fa-chevron-right"></i>
           </div>
         </div>
       </div>
     </div>
+  </div>
+  <template v-if="productList.length === 0">
+    <div class="empty-cart">
+      <div class="empty-cart__icon">
+        <img
+          :src="`${baseUrl}/1111111111111111111/images/empty-cart.svg`"
+          alt=""
+        />
+      </div>
+      <p class="empty-cart__title">Giỏ hàng của bạn đang trống</p>
+      <a href="/" class="empty-cart__btn btn btn-dark">Mua sắm ngay</a>
+    </div>
+  </template>
+  <template v-else>
     <div class="separate-line"></div>
     <div class="section py-30">
       <div class="container-fluid">
@@ -320,9 +362,22 @@ export default defineComponent({
                   product.title
                 }}</a>
               </p>
-              <p class="m-cart__price" v-if="product.price_sale != 0">
-                {{ Intl.NumberFormat("vi-VN").format(product.price_sale) }}đ
-                <del v-if="product.price_sale != product.price_retail"
+              <p
+                class="m-cart__price"
+                v-if="product.price_sale != 0 || product.flash_sale != 0"
+              >
+                {{
+                  product.flash_sale
+                    ? Intl.NumberFormat("vi-VN").format(product.flash_sale)
+                    : product.price_sale
+                    ? Intl.NumberFormat("vi-VN").format(product.price_sale)
+                    : Intl.NumberFormat("vi-VN").format(product.price_retail)
+                }}đ
+                <del
+                  v-if="
+                    product.price_sale != product.price_retail ||
+                    product.flash_sale != product.price_retail
+                  "
                   >{{
                     Intl.NumberFormat("vi-VN").format(product.price_retail)
                   }}đ</del
@@ -687,6 +742,7 @@ export default defineComponent({
             <div
               class="swiper-init swiper-42vw shadow-item-slider"
               id="collection-swipper"
+              data-loop="false"
             >
               <div class="swiper-container">
                 <div class="swiper-wrapper gx-10">
@@ -702,8 +758,21 @@ export default defineComponent({
                         </div>
                         <div
                           class="pd-item__top__icon pd-item__top__icon--heart"
+                          @click="
+                            () =>
+                              onHeartClick(
+                                product.product_id,
+                                !productWishedList.includes(product.product_id)
+                              )
+                          "
                         >
-                          <i class="far fa-heart"></i>
+                          <i
+                            :class="`${
+                              productWishedList.includes(product.product_id)
+                                ? 'fas heart-checked'
+                                : 'far'
+                            } fa-heart`"
+                          ></i>
                         </div>
                         <div
                           class="pd-item__top__icon pd-item__top__icon--cart"
@@ -778,7 +847,7 @@ export default defineComponent({
       </div>
     </section>
     <div class="separate-line"></div>
-  </main>
+  </template>
 
   <!-- ADD TO CART MODAL -->
   <ProductModal

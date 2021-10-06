@@ -146,12 +146,12 @@ export default defineComponent({
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Người nhận:</div>
-              <div class="col-8 fw-semi">{{ order.shipping_full_name }}</div>
+              <div class="col-8 fw-semi">{{ order.shipping_fullname }}</div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Điện thoại:</div>
               <div class="col-8 fw-semi">
-                {{ order.shipping_phone_number }}
+                {{ order.shipping_phone }}
               </div>
             </div>
             <div class="row gx-3 mb-12">
@@ -225,12 +225,6 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-header">
           <p class="modal-title">ĐÁNH GIÁ TRẢI NGHIỆM</p>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
         </div>
         <div class="modal-body py-25">
           <form action="" class="experience-form" id="experienceForm">

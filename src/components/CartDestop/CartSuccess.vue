@@ -17,7 +17,7 @@ export default defineComponent({
     const paymentMethodType = computed(() => store.getters.paymentMethodType);
     const orderExperience = computed(() => store.state.orderExperience);
     const billingAddress = computed(() => store.state.billingAddress);
-    const shippingAddress = computed(() => store.state.shippingAddress);
+    const guestShippingInfo = computed(() => store.state.guestShippingInfo);
     const subPrice = computed(() => store.getters.subPrice);
 
     onMounted(() => {
@@ -48,10 +48,10 @@ export default defineComponent({
           note: note.value,
           phone: billingAddress.value.customer_id
             ? billingAddress.value.phone_number
-            : shippingAddress.value.phone_number,
+            : guestShippingInfo.value.phone_number,
           name: billingAddress.value.customer_id
             ? billingAddress.value.name
-            : shippingAddress.value.name,
+            : guestShippingInfo.value.name,
           order_id: orderId.value.toString(),
         };
 
@@ -79,7 +79,7 @@ export default defineComponent({
       baseUrl,
       subPrice,
       isDisable,
-      shippingAddress,
+      guestShippingInfo,
       paymentMethodType,
       orderExperience,
       orderId,
@@ -127,18 +127,18 @@ export default defineComponent({
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Người nhận:</div>
-              <div class="col-8 fw-semi">{{ shippingAddress.name }}</div>
+              <div class="col-8 fw-semi">{{ guestShippingInfo.name }}</div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Điện thoại:</div>
               <div class="col-8 fw-semi">
-                {{ shippingAddress.phone_number }}
+                {{ guestShippingInfo.phone_number }}
               </div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Địa chỉ:</div>
               <div class="col-8 fw-semi">
-                {{ shippingAddress.address }}
+                {{ guestShippingInfo.address }}
               </div>
             </div>
             <div class="border-top border-C0 my-20"></div>

@@ -6,8 +6,8 @@ import {
   getDeliveredOrder,
   getCustomerInfo,
   getNewOrderWebsite,
-logOut,
-uploadImage,
+  logOut,
+  uploadImage,
 } from "../api/account";
 import { money, date } from "../helper/format";
 import Loading from "./Loading.vue";
@@ -205,7 +205,7 @@ export default defineComponent({
         isLoading.value = true;
         await logOut();
 
-        location.reload()
+        location.reload();
       } catch (err) {
         isError.value = true;
       } finally {
@@ -214,29 +214,29 @@ export default defineComponent({
     };
 
     const loginClick = () => {
-      openModal("loginModal")
-    }
+      openModal("loginModal");
+    };
 
     const onUploadFile = () => {
-      const el = document.getElementById("upload_image")
+      const el = document.getElementById("upload_image");
 
       if (el) {
-        el.click()
+        el.click();
       }
-    }
+    };
 
     const onUploadImage = async (e) => {
       try {
         isLoading.value = true;
         await uploadImage(e.target.files[0]);
 
-        await customerInfoApi()
+        await customerInfoApi();
       } catch (err) {
         isError.value = true;
       } finally {
         isLoading.value = false;
       }
-    }
+    };
 
     return {
       baseUrl,
@@ -261,45 +261,6 @@ export default defineComponent({
 </script>
 
 <template>
-  <header id="header" class="header">
-    <div class="container-fluid">
-      <h1 class="header__logo">
-        <a href="trang-chu.html">
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/logo.svg`"
-            alt="POLOMAN"
-          />
-        </a>
-        <span class="hide-text">POLOMAN</span>
-      </h1>
-      <div class="header__right">
-        <a
-          href="#"
-          class="header__icon js-toggle-btn"
-          data-target="#aside-search"
-        >
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/search.svg`"
-            alt=""
-          />
-        </a>
-        <a href="gio-hang.html" class="header__icon" id="hd-cart">
-          <span>2</span>
-          <img :src="`${baseUrl}/1111111111111111111/images/cart.svg`" alt="" />
-        </a>
-        <a
-          href="#"
-          class="header__icon js-toggle-btn"
-          data-target="#aside-menu"
-        >
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/hamburger.svg`"
-            alt=""
-          />
-        </a>
-      </div>
-    </div>
-  </header>
   <main class="main">
     <template v-if="customerInfo.id">
       <div class="section pt-30 pb-2">
@@ -309,7 +270,14 @@ export default defineComponent({
               <img :src="customerInfo.photo_url" alt="" />
             </div>
             <div class="user-avatar__heraldic">
-              <input type="file" id="upload_image" name="img" accept="image/*" class="d-none" @change="onUploadImage">
+              <input
+                type="file"
+                id="upload_image"
+                name="img"
+                accept="image/*"
+                class="d-none"
+                @change="onUploadImage"
+              />
               <img
                 :src="`${baseUrl}/1111111111111111111/images/heraldic.svg`"
                 alt=""
@@ -518,7 +486,11 @@ export default defineComponent({
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
                                 <span class="fz-10 mx-2">X</span>
-                                {{ money(order.detail[0].price) }}
+                                {{
+                                  order.detail[0].type === 2
+                                    ? `0đ (Quà tặng)`
+                                    : money(order.detail[0].price)
+                                }}
                               </p>
                             </div>
                           </div>
@@ -546,7 +518,11 @@ export default defineComponent({
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
                                   <span class="fz-10 mx-2">X</span>
-                                  {{ money(product.price) }}
+                                  {{
+                                    product.type === 2
+                                      ? `0đ (Quà tặng)`
+                                      : money(product.price)
+                                  }}
                                 </p>
                               </div>
                             </div>
@@ -572,16 +548,40 @@ export default defineComponent({
                       <div class="order-detail">
                         <div class="order-detail__title">
                           THÔNG TIN GIAO HÀNG
-                          <span class="badge badge-blue-custom">Mặc định</span>
+                          <span
+                            class="badge badge-blue-custom"
+                            v-if="
+                              order.send_type === 0 && order.address.is_default
+                            "
+                            >Mặc định</span
+                          >
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.shipping_name }}
+                            {{
+                              order.send_type === 0
+                                ? order.address.name
+                                : order.send_type === 1
+                                ? order.bill_fullname
+                                : order.shipping_fullname
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            <p class="mb-0">{{ order.shipping_phone }}</p>
                             <p class="mb-0">
-                              {{ order.shipping_address }}
+                              {{
+                                order.send_type === 0
+                                  ? order.address.phone_number
+                                  : order.send_type === 1
+                                  ? order.bill_phone
+                                  : order.shipping_phone
+                              }}
+                            </p>
+                            <p class="mb-0">
+                              {{
+                                order.send_type === 0
+                                  ? order.address.full_address
+                                  : order.shipping_address
+                              }}
                             </p>
                           </div>
                         </div>
@@ -602,9 +602,7 @@ export default defineComponent({
                                   {{
                                     date(
                                       new Date(
-                                        new Date(
-                                          orderDetail.create_at
-                                        ).getTime() +
+                                        new Date(order.create_at).getTime() +
                                           3600 * 1000 * 24
                                       ),
                                       "dd/MM"
@@ -614,9 +612,7 @@ export default defineComponent({
                                   {{
                                     date(
                                       new Date(
-                                        new Date(
-                                          orderDetail.create_at
-                                        ).getTime() +
+                                        new Date(order.create_at).getTime() +
                                           3600 * 1000 * 24 * 4
                                       ),
                                       "dd/MM"
@@ -640,10 +636,18 @@ export default defineComponent({
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.delivery_type.title }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng tiêu chuẩn"
+                                : "Giao nhanh 2h"
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            {{ order.delivery_type.detail }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng vào giờ hành chính, từ thứ 2 đến thứ 7 hàng tuần."
+                                : "Giao hàng 24/7 kể cả ngày lễ."
+                            }}
                           </div>
                         </div>
                       </div>
@@ -789,7 +793,11 @@ export default defineComponent({
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
                                 <span class="fz-10 mx-2">X</span>
-                                {{ money(order.detail[0].price) }}
+                                {{
+                                  order.detail[0].type === 2
+                                    ? `0đ (Quà tặng)`
+                                    : money(order.detail[0].price)
+                                }}
                               </p>
                             </div>
                           </div>
@@ -817,7 +825,11 @@ export default defineComponent({
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
                                   <span class="fz-10 mx-2">X</span>
-                                  {{ money(product.price) }}
+                                  {{
+                                    product.type === 2
+                                      ? `0đ (Quà tặng)`
+                                      : money(product.price)
+                                  }}
                                 </p>
                               </div>
                             </div>
@@ -843,16 +855,40 @@ export default defineComponent({
                       <div class="order-detail">
                         <div class="order-detail__title">
                           THÔNG TIN GIAO HÀNG
-                          <span class="badge badge-blue-custom">Mặc định</span>
+                          <span
+                            class="badge badge-blue-custom"
+                            v-if="
+                              order.send_type === 0 && order.address.is_default
+                            "
+                            >Mặc định</span
+                          >
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.shipping_name }}
+                            {{
+                              order.send_type === 0
+                                ? order.address.name
+                                : order.send_type === 1
+                                ? order.bill_fullname
+                                : order.shipping_fullname
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            <p class="mb-0">{{ order.shipping_phone }}</p>
                             <p class="mb-0">
-                              {{ order.shipping_address }}
+                              {{
+                                order.send_type === 0
+                                  ? order.address.phone_number
+                                  : order.send_type === 1
+                                  ? order.bill_phone
+                                  : order.shipping_phone
+                              }}
+                            </p>
+                            <p class="mb-0">
+                              {{
+                                order.send_type === 0
+                                  ? order.address.full_address
+                                  : order.shipping_address
+                              }}
                             </p>
                           </div>
                         </div>
@@ -903,10 +939,18 @@ export default defineComponent({
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.delivery_type.title }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng tiêu chuẩn"
+                                : "Giao nhanh 2h"
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            {{ order.delivery_type.detail }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng vào giờ hành chính, từ thứ 2 đến thứ 7 hàng tuần."
+                                : "Giao hàng 24/7 kể cả ngày lễ."
+                            }}
                           </div>
                         </div>
                       </div>
@@ -1051,7 +1095,11 @@ export default defineComponent({
                               <p class="checkout-pd__price">
                                 {{ order.detail[0].quantity }}
                                 <span class="fz-10 mx-2">X</span>
-                                {{ money(order.detail[0].price) }}
+                                {{
+                                  order.detail[0].type === 2
+                                    ? `0đ (Quà tặng)`
+                                    : money(order.detail[0].price)
+                                }}
                               </p>
                             </div>
                           </div>
@@ -1079,7 +1127,11 @@ export default defineComponent({
                                 <p class="checkout-pd__price">
                                   {{ product.quantity }}
                                   <span class="fz-10 mx-2">X</span>
-                                  {{ money(product.price) }}
+                                  {{
+                                    product.type === 2
+                                      ? `0đ (Quà tặng)`
+                                      : money(product.price)
+                                  }}
                                 </p>
                               </div>
                             </div>
@@ -1105,16 +1157,40 @@ export default defineComponent({
                       <div class="order-detail">
                         <div class="order-detail__title">
                           THÔNG TIN GIAO HÀNG
-                          <!-- <span class="badge badge-blue-custom">Mặc định</span> -->
+                          <span
+                            class="badge badge-blue-custom"
+                            v-if="
+                              order.send_type === 0 && order.address.is_default
+                            "
+                            >Mặc định</span
+                          >
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.shipping_name }}
+                            {{
+                              order.send_type === 0
+                                ? order.address.name
+                                : order.send_type === 1
+                                ? order.bill_fullname
+                                : order.shipping_fullname
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            <p class="mb-0">{{ order.shipping_phone }}</p>
                             <p class="mb-0">
-                              {{ order.shipping_address }}
+                              {{
+                                order.send_type === 0
+                                  ? order.address.phone_number
+                                  : order.send_type === 1
+                                  ? order.bill_phone
+                                  : order.shipping_phone
+                              }}
+                            </p>
+                            <p class="mb-0">
+                              {{
+                                order.send_type === 0
+                                  ? order.address.full_address
+                                  : order.shipping_address
+                              }}
                             </p>
                           </div>
                         </div>
@@ -1165,10 +1241,18 @@ export default defineComponent({
                         </div>
                         <div class="order-detail__content">
                           <p class="order-detail__content__title">
-                            {{ order.delivery_type.title }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng tiêu chuẩn"
+                                : "Giao nhanh 2h"
+                            }}
                           </p>
                           <div class="order-detail__content__desc">
-                            {{ order.delivery_type.detail }}
+                            {{
+                              order.delivery_type === "1"
+                                ? "Giao hàng vào giờ hành chính, từ thứ 2 đến thứ 7 hàng tuần."
+                                : "Giao hàng 24/7 kể cả ngày lễ."
+                            }}
                           </div>
                         </div>
                       </div>
@@ -1292,7 +1376,7 @@ export default defineComponent({
                   </a>
                 </li>
                 <li v-if="customerInfo.id">
-                  <a href="#">
+                  <a href="/product-wished">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-heart.svg`"
                       alt=""
@@ -1301,7 +1385,7 @@ export default defineComponent({
                     <i class="fas fa-chevron-right"></i>
                   </a>
                 </li>
-                <li v-if="customerInfo.id">
+                <!-- <li v-if="customerInfo.id">
                   <a href="#">
                     <img
                       :src="`${baseUrl}/1111111111111111111/images/icon-time.svg`"
@@ -1320,7 +1404,7 @@ export default defineComponent({
                     Sản phẩm đã đánh giá
                     <i class="fas fa-chevron-right"></i>
                   </a>
-                </li>
+                </li> -->
               </ul>
             </div>
           </div>

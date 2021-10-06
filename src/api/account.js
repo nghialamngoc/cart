@@ -43,6 +43,7 @@ export const getOrderDetail = async (id) => {
     if (data.order_id != 0) {
       const box = data.detail.find((x) => x.type === 3);
       return {
+        ...data,
         order_id: data.order_id,
         statusText: mappingStatus(data.status),
         status: data.status,
@@ -104,6 +105,7 @@ export const getNewOrderWebsite = async () => {
       return data.map((x) => {
         const box = x.detail.find((x) => x.type === 3);
         return {
+          ...x,
           order_id: x.order_id,
           statusText: mappingStatus(x.status),
           status: x.status,
@@ -152,6 +154,7 @@ export const getDeliveredOrder = async () => {
     if (Array.isArray(data) && data.length > 0) {
       return data.map((x) => {
         return {
+          ...x,
           order_id: x.order_id,
           statusText: mappingStatus(x.status),
           status: x.status,
@@ -197,6 +200,7 @@ export const getCancelOrder = async () => {
     if (Array.isArray(data) && data.length > 0) {
       return data.map((x) => {
         return {
+          ...x,
           order_id: x.order_id,
           statusText: mappingStatus(x.status),
           status: x.status,

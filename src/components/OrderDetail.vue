@@ -26,9 +26,8 @@ export default defineComponent({
       if (id) {
         await orderDetailApi(id);
       } else {
-        location.replace('http://google.com/');
+        // location.replace('http://google.com/');
       }
-
     });
 
     const orderDetailApi = async (id) => {
@@ -187,11 +186,31 @@ export default defineComponent({
             <h3 class="checkout__head__title">ĐỊA CHỈ NHẬN HÀNG</h3>
           </div>
           <div class="checkout__body checkout__body--outside">
-            <p class="checkout__body__title">{{ orderDetail.shipping_name }}</p>
+            <p class="checkout__body__title">
+              {{
+                orderDetail.send_type === 0
+                  ? orderDetail.address.name
+                  : orderDetail.send_type === 1
+                  ? orderDetail.bill_fullname
+                  : orderDetail.shipping_fullname
+              }}
+            </p>
             <div class="text-63 ls-20">
-              <p class="mb-1">{{ orderDetail.shipping_phone }}</p>
+              <p class="mb-1">
+                {{
+                  orderDetail.send_type === 0
+                    ? orderDetail.address.phone_number
+                    : orderDetail.send_type === 1
+                    ? orderDetail.bill_phone
+                    : orderDetail.shipping_phone
+                }}
+              </p>
               <p class="mb-0">
-                {{ orderDetail.shipping_address }}
+                {{
+                  orderDetail.send_type === 0
+                    ? orderDetail.address.full_address
+                    : orderDetail.shipping_address
+                }}
               </p>
             </div>
           </div>
@@ -259,14 +278,16 @@ export default defineComponent({
           <div class="checkout__body checkout__body--outside">
             <p class="checkout__body__title">
               {{
-                orderDetail.delivery_type ? orderDetail.delivery_type.title : ""
+                orderDetail.delivery_type === "1"
+                  ? "Giao hàng tiêu chuẩn"
+                  : "Giao nhanh 2h"
               }}
             </p>
             <p class="text-63 mb-0">
               {{
-                orderDetail.delivery_type
-                  ? orderDetail.delivery_type.detail
-                  : ""
+                orderDetail.delivery_type === "1"
+                  ? "Giao hàng vào giờ hành chính, từ thứ 2 đến thứ 7 hàng tuần."
+                  : "Giao hàng 24/7 kể cả ngày lễ."
               }}
             </p>
           </div>
@@ -310,7 +331,9 @@ export default defineComponent({
                 <p class="checkout-pd__price">
                   {{ product.quantity }}
                   <span class="fz-10 mx-2">X</span>
-                  {{ money(product.price) }}
+                  {{
+                    product.type === 2 ? `0đ (Quà tặng)` : money(product.price)
+                  }}
                 </p>
               </div>
             </div>

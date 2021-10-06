@@ -161,10 +161,7 @@ export const addOrder = async (payload) => {
 
 export const addOrderExperience = async (payload) => {
   try {
-    await axios.post(
-      `${baseUrl}/cart/api/v1/order_experience_add`,
-      payload
-    );
+    await axios.post(`${baseUrl}/cart/api/v1/order_experience_add`, payload);
   } catch (err) {
     return Promise.reject(err);
   }
@@ -172,7 +169,7 @@ export const addOrderExperience = async (payload) => {
 
 export const getPaymentMethodList = async (id) => {
   try {
-    const { data } = await axios.post(`${baseUrl}/cart/api/v1/payment_methods`, {
+    const data = await axios.post(`${baseUrl}/cart/api/v1/payment_methods`, {
       id,
     });
 
@@ -182,11 +179,55 @@ export const getPaymentMethodList = async (id) => {
   }
 };
 
+export const getQuickShippingList = async (id) => {
+  try {
+    const { data } = await axios.post(
+      `${baseUrl}/cart/api/v1/quick_shiping_list`,
+      {
+        id,
+      }
+    );
+
+    return data;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
 export const getAhamoShippingFee = async (payload) => {
   try {
-    const { data } = await axios.post(`${baseUrl}/delivery/ahamove/api/v1/order/estimated-fee`, payload);
+    const { data } = await axios.post(
+      `${baseUrl}/delivery/ahamove/api/v1/order/estimated-fee`,
+      payload
+    );
 
-    return data
+    return data;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const getProductWishedList = async () => {
+  try {
+    const { data } = await axios.post(`${baseUrl}/product/api/v1/wished/list`);
+
+    return data;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+
+export const setProductWished = async (payload) => {
+  try {
+    const { data, is_login } = await axios.post(
+      `${baseUrl}/product/api/v1/wished/check`,
+      payload
+    );
+
+    return {
+      data,
+      is_login,
+    };
   } catch (err) {
     return Promise.reject(err);
   }

@@ -52,8 +52,8 @@ export default {
     state.billingAddress = data;
   },
 
-  setShippingAddress(state, data) {
-    state.shippingAddress = data;
+  setGuestShippingInfo(state, data) {
+    state.guestShippingInfo = data;
   },
 
   setShippingStandard(state, data) {
@@ -62,6 +62,10 @@ export default {
 
   setShippingType(state, data) {
     state.shippingType = data;
+  },
+
+  setQuickShippingList(state, data) {
+    state.quickShippingList = data;
   },
 
   setQuickShippingType(state, data) {
@@ -133,5 +137,13 @@ export default {
         is_default: address.is_default,
       };
     }
+  },
+
+  setProdutWishedList(state, data) {
+    state.productWishedList = data;
+  },
+
+  setBankList(state, data) {
+    state.bankList = data;
   },
 };

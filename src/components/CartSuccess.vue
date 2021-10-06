@@ -16,8 +16,11 @@ export default defineComponent({
     const orderId = computed(() => store.state.orderId);
     const paymentMethodType = computed(() => store.getters.paymentMethodType);
     const orderExperience = computed(() => store.state.orderExperience);
-    const billingAddress = computed(() => store.state.billingAddress);
-    const shippingAddress = computed(() => store.state.shippingAddress);
+    const customerId = computed(() => store.getters.customerId);
+    const customerShippingAddress = computed(
+      () => store.state.customerShippingAddress
+    );
+    const guestShippingInfo = computed(() => store.state.guestShippingInfo);
     const subPrice = computed(() => store.getters.subPrice);
 
     onMounted(() => {
@@ -46,12 +49,12 @@ export default defineComponent({
         const payload = {
           ...orderExperience.value,
           note: note.value,
-          phone: billingAddress.value.customer_id
-            ? billingAddress.value.phone_number
-            : shippingAddress.value.phone_number,
-          name: billingAddress.value.customer_id
-            ? billingAddress.value.name
-            : shippingAddress.value.name,
+          phone: customerId.value
+            ? customerShippingAddress.value.phone_number
+            : guestShippingInfo.value.bill_phone,
+          name: customerId.value
+            ? customerShippingAddress.value.name
+            : guestShippingInfo.value.bill_fullname,
           order_id: orderId.value.toString(),
         };
 
@@ -79,9 +82,11 @@ export default defineComponent({
       baseUrl,
       subPrice,
       isDisable,
-      shippingAddress,
+      customerId,
+      guestShippingInfo,
       paymentMethodType,
       orderExperience,
+      customerShippingAddress,
       orderId,
       money,
       setReport,
@@ -127,18 +132,32 @@ export default defineComponent({
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Người nhận:</div>
-              <div class="col-8 fw-semi">{{ shippingAddress.name }}</div>
+              <div class="col-8 fw-semi">
+                {{
+                  customerId
+                    ? customerShippingAddress.name
+                    : guestShippingInfo.type_send === 1 ? guestShippingInfo.bill_fullname : guestShippingInfo.fullname
+                }}
+              </div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Điện thoại:</div>
               <div class="col-8 fw-semi">
-                {{ shippingAddress.phone_number }}
+                {{
+                  customerId
+                    ? customerShippingAddress.phone_number
+                    : guestShippingInfo.type_send === 1 ? guestShippingInfo.bill_phone : guestShippingInfo.phone
+                }}
               </div>
             </div>
             <div class="row gx-3 mb-12">
               <div class="col-4">Địa chỉ:</div>
               <div class="col-8 fw-semi">
-                {{ shippingAddress.address }}
+                {{
+                  customerId
+                    ? customerShippingAddress.address
+                    : guestShippingInfo.address
+                }}
               </div>
             </div>
             <div class="border-top border-C0 my-20"></div>
@@ -208,12 +227,6 @@ export default defineComponent({
       <div class="modal-content">
         <div class="modal-header">
           <p class="modal-title">ĐÁNH GIÁ TRẢI NGHIỆM</p>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
         </div>
         <div class="modal-body py-25">
           <form action="" class="experience-form" id="experienceForm">

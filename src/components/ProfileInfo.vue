@@ -138,45 +138,6 @@ export default defineComponent({
 </script>
 
 <template>
-  <header id="header" class="header">
-    <div class="container-fluid">
-      <h1 class="header__logo">
-        <a href="trang-chu.html">
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/logo.svg`"
-            alt="POLOMAN"
-          />
-        </a>
-        <span class="hide-text">POLOMAN</span>
-      </h1>
-      <div class="header__right">
-        <a
-          href="#"
-          class="header__icon js-toggle-btn"
-          data-target="#aside-search"
-        >
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/search.svg`"
-            alt=""
-          />
-        </a>
-        <a href="gio-hang.html" class="header__icon" id="hd-cart">
-          <span>2</span>
-          <img :src="`${baseUrl}/1111111111111111111/images/cart.svg`" alt="" />
-        </a>
-        <a
-          href="#"
-          class="header__icon js-toggle-btn"
-          data-target="#aside-menu"
-        >
-          <img
-            :src="`${baseUrl}/1111111111111111111/images/hamburger.svg`"
-            alt=""
-          />
-        </a>
-      </div>
-    </div>
-  </header>
   <main class="main">
     <div class="section pt-30">
       <div class="container-fluid">

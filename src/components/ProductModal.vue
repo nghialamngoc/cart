@@ -9,6 +9,7 @@ import {
 import { useStore } from "vuex";
 import { getProductDetail } from "../api";
 import { getSizeDetail } from "../api/order";
+import { countdownInit } from "../helper/countDown";
 
 export default defineComponent({
   props: ["data", "baseUrl", "productEditId", "isEdit"],
@@ -26,7 +27,6 @@ export default defineComponent({
     const variations = ref([]);
     const voucherList = computed(() => store.state.voucherList);
     const flashSaleCountDown = ref(null);
-    const productDetailVoucherSwiper = ref(null);
     const productDetailImagesSwiper = ref(null);
 
     watch(
@@ -100,8 +100,8 @@ export default defineComponent({
         result.push(
           ...data.product_media.map((x) => {
             return {
-              src: x,
-              thumb: x,
+              src: x.image,
+              thumb: x.image,
               type: "image",
             };
           })
@@ -247,6 +247,17 @@ export default defineComponent({
       return result;
     });
 
+    const imageList = computed(() => {
+      if (
+        Array.isArray(props.data.product_media) &&
+        props.data.product_media.length > 0
+      ) {
+        return props.data.product_media.map((x) => x.image);
+      }
+
+      return [];
+    });
+
     const price = computed(() => {
       if (productSelect.value && productSelect.value.product_id) {
         return productSelect.value;
@@ -296,6 +307,20 @@ export default defineComponent({
       }
 
       colorSelect.value = color.id;
+
+      const slider = document.getElementById("scroll-images");
+      if (slider) {
+        const slide = slider.querySelector(
+          `.scroll-snap__item[data-color="${color.id}"]`
+        );
+        const left =
+          slide.offsetLeft - slider.offsetWidth / 2 + slide.offsetWidth / 2;
+        slider.scroll({
+          left: left,
+          top: 0,
+          behavior: "smooth",
+        });
+      }
     };
 
     const onSizeChange = async (size) => {
@@ -318,6 +343,7 @@ export default defineComponent({
       height,
       weight,
       gallery,
+      imageList,
       minHeight,
       maxWeight,
       minWeight,
@@ -381,21 +407,161 @@ export default defineComponent({
                     js-gallery-2
                   "
                   :data-thumb="gallery"
+                  id="scroll-images"
                 >
                   <div
                     class="scroll-snap__item js-gallery__item"
                     v-for="(media, index) in data.product_media"
                     :key="index"
+                    :data-color="media.attribute_id"
                   >
                     <div class="ratio">
-                      <img :src="media" alt="" />
+                      <img :src="media.image" alt="" />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="mb-2">
+          <div v-if="productSelect.flash_sale_id">
+            <div class="mb-12 mt-20">
+              <div class="row">
+                <div class="col px-0">
+                  <div class="bg-006 text-white py-2">
+                    <div class="container-fluid px-3">
+                      <div class="row align-items-center gx-3">
+                        <div class="col-7">
+                          <div class="pd-detail__flash-sale">
+                            <img :src="`${baseUrl}/1111111111111111111/images/light.svg`" alt="" />
+                            FLASH SALE
+                          </div>
+                          <div
+                            class="
+                              pd-detail__price pd-detail__price--flash-sale
+                            "
+                          >
+                            <p class="pd-detail__price__old">
+                              {{
+                                Intl.NumberFormat("vi-VN").format(
+                                  price.price_retail
+                                )
+                              }}đ
+                            </p>
+                            <p class="pd-detail__price__new">
+                              {{
+                                Intl.NumberFormat("vi-VN").format(
+                                  price.flash_sale_price
+                                )
+                              }}đ
+                            </p>
+                            <span class="m-badge m-badge--white"
+                              >-{{
+                                Math.round(
+                                  ((price.price_retail -
+                                    price.flash_sale_price) /
+                                    price.price_retail) *
+                                    100
+                                )
+                              }}%</span
+                            >
+                          </div>
+                        </div>
+                        <div class="col-5 text-end">
+                          <div class="pd-detail__countdown countdown-box">
+                            <div class="countdown-box__title">
+                              Kết thúc trong
+                            </div>
+                            <div class="countdown-box__content">
+                              <div
+                                class="
+                                  countdown countdown--sm countdown--outline
+                                "
+                                id="flash-sale-count-down"
+                                :data-countdown="
+                                  productSelect.flash_sale_end_date
+                                "
+                              >
+                                <div class="countdown__number countdown__hours">
+                                  <span>0</span>
+                                  <span>0</span>
+                                </div>
+                                :
+                                <div
+                                  class="countdown__number countdown__minutes"
+                                >
+                                  <span>0</span>
+                                  <span>0</span>
+                                </div>
+                                :
+                                <div
+                                  class="countdown__number countdown__seconds"
+                                >
+                                  <span>0</span>
+                                  <span>0</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="pd-detail__purchases">
+                            <i class="fas fa-shopping-cart"></i>
+                            {{
+                              productSelect.flash_sale_amount -
+                              productSelect.flash_sale_remain
+                            }}
+                            lượt mua
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mb-4">
+              <div class="row gx-3">
+                <div class="col">
+                  <p class="pd-detail__title">
+                    {{
+                      data && data.product_lang
+                        ? data.product_lang[0].title
+                        : ""
+                    }}
+                  </p>
+                  <div
+                    class="pd-detail__rating justify-content-start mt-1 mb-0"
+                  >
+                    <div class="rating-stars">
+                      <div class="empty-stars">
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                      </div>
+                      <div
+                        class="filled-stars"
+                        :style="`width: ${(data.rating_start / 5) * 100}%`"
+                      >
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                        <i class="far fa-star"></i>
+                      </div>
+                    </div>
+                    <span
+                      >{{ data.rating_start }} ({{ data.total_comment }} đánh
+                      giá)</span
+                    >
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <div class="pd-badge" v-if="data.is_new">NEW</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-2" v-else>
             <div class="row gx-3">
               <div class="col">
                 <p class="pd-detail__title">
@@ -412,71 +578,80 @@ export default defineComponent({
                 />
               </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <div class="row">
-              <div class="bg-F2 py-2">
-                <div class="row align-items-center gx-3">
-                  <div class="col-6">
-                    <div class="pd-detail__price">
-                      <p class="pd-detail__price__new">
-                        <span
-                          >{{
+            <div class="mb-3">
+              <div class="row">
+                <div class="bg-F2 py-2">
+                  <div class="row align-items-center gx-3">
+                    <div class="col-6">
+                      <div class="pd-detail__price">
+                        <p class="pd-detail__price__new">
+                          <span
+                            >{{
+                              Intl.NumberFormat("vi-VN").format(
+                                price.price_sale || price.price_retail
+                              )
+                            }}đ</span
+                          >
+                          <span class="m-badge" v-if="price.price_sale"
+                            >-{{
+                              Math.round(
+                                ((price.price_retail - price.price_sale) /
+                                  price.price_retail) *
+                                  100
+                              )
+                            }}%</span
+                          >
+                        </p>
+                        <p
+                          class="pd-detail__price__old"
+                          v-if="price.price_sale"
+                        >
+                          {{
                             Intl.NumberFormat("vi-VN").format(
-                              price.price_sale || price.price_retail
+                              price.price_retail
                             )
-                          }}đ</span
-                        >
-                        <span class="m-badge" v-if="price.price_sale"
-                          >-{{
-                            Math.round(
-                              ((price.price_retail - price.price_sale) /
-                                price.price_retail) *
-                                100
-                            )
-                          }}%</span
-                        >
-                      </p>
-                      <p class="pd-detail__price__old" v-if="price.price_sale">
-                        {{
-                          Intl.NumberFormat("vi-VN").format(price.price_retail)
-                        }}đ
-                      </p>
-                    </div>
-                  </div>
-                  <div class="col-6 text-end">
-                    <div class="pd-detail__rating">
-                      <div class="rating-stars">
-                        <div class="empty-stars">
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                        </div>
-                        <div
-                          class="filled-stars"
-                          :style="`width: ${(data.rating_start / 5) * 100}%`"
-                        >
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                          <i class="far fa-star"></i>
-                        </div>
+                          }}đ
+                        </p>
                       </div>
-                      <span
-                        >{{ data.rating_start }} ({{ data.total_comment }} đánh
-                        giá)</span
-                      >
                     </div>
-                    <div class="pd-detail__purchases">
-                      <i class="fas fa-shopping-cart"></i>
-                      {{
-                        Intl.NumberFormat("vi-VN").format(data.total_qty_export)
-                      }}
-                      lượt mua |
-                      <span class="fw-semi">Còn hàng</span>
+                    <div class="col-6 text-end">
+                      <div class="pd-detail__rating">
+                        <div class="rating-stars">
+                          <div class="empty-stars">
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
+                          <div
+                            class="filled-stars"
+                            :style="`width: ${(data.rating_start / 5) * 100}%`"
+                          >
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                          </div>
+                        </div>
+                        <span
+                          >{{ data.rating_start }} ({{
+                            data.total_comment
+                          }}
+                          đánh giá)</span
+                        >
+                      </div>
+                      <div class="pd-detail__purchases">
+                        <i class="fas fa-shopping-cart"></i>
+                        {{
+                          Intl.NumberFormat("vi-VN").format(
+                            data.total_qty_export
+                          )
+                        }}
+                        lượt mua |
+                        <span class="fw-semi">Còn hàng</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -592,7 +767,7 @@ export default defineComponent({
               justify-content-center
               add-to-cart-modal-btn
             "
-            :disabled="!productSelect.product_id"
+            :disabled="!productSelect.product_id || !colorSelect || !sizeSelect "
             @click="onSubmit"
           >
             <img

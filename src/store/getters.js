@@ -101,12 +101,12 @@ export default {
 
   isValidShippingAddress(state) {
     if (
-      !state.shippingAddress.name ||
-      !state.shippingAddress.address ||
-      !state.shippingAddress.phone_number ||
-      !state.shippingAddress.province_id ||
-      !state.shippingAddress.district_id ||
-      !state.shippingAddress.commune_id
+      !state.guestShippingInfo.name ||
+      !state.guestShippingInfo.address ||
+      !state.guestShippingInfo.phone_number ||
+      !state.guestShippingInfo.province_id ||
+      !state.guestShippingInfo.district_id ||
+      !state.guestShippingInfo.commune_id
     ) {
       return false;
     }
@@ -190,12 +190,10 @@ export default {
     }
 
     if (state.shippingType == 2) {
-      if (state.quickShippingType == 2) {
-        result = state.grap.total_price;
-      }
+      const selected = state.quickShippingList.find(x => x.carrier_id === state.quickShippingType)
 
-      if (state.quickShippingType == 3) {
-        result = state.ahamove.total_price;
+      if (selected) {
+        result = selected.total_price
       }
     }
 

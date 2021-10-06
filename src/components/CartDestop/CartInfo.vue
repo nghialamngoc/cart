@@ -643,7 +643,7 @@ export default defineComponent({
               </section>
               <section class="pt-45" v-if="collection && collection.length > 0">
                 <h2 class="fz-18 fw-bold mb-25">ƯU ĐÃI RIÊNG CHO BẠN</h2>
-                <div class="swiper-init" id="collection-swipper">
+                <div class="swiper-init" id="collection-swipper" data-loop="false">
                   <div class="swiper-container">
                     <div
                       class="

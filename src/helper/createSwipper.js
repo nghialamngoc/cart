@@ -37,7 +37,7 @@ export const create = () => {
         delay: 2000,
         disableOnInteraction: false,
       },
-      loop: true,
+      //loop: false,
     });
   });
 
@@ -55,7 +55,7 @@ export const create = () => {
           delay: 2000,
           disableOnInteraction: false,
         },
-        loop: false,
+        // loop: false,
       });
     }
   }
@@ -73,7 +73,7 @@ export const createSwipper = (el) => {
       delay: 2000,
       disableOnInteraction: false,
     },
-    loop: true,
+    loop: false,
   });
 
   return swiper;
@@ -97,7 +97,7 @@ export const createSwipper2 = (el) => {
       delay: 3000,
       disableOnInteraction: false,
     },
-    loop: true,
+    loop: false,
     pagination: {
       el: swiperPagination,
       clickable: true,

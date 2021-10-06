@@ -1,8 +1,7 @@
 <script>
-import { computed, defineComponent, ref } from "@vue/runtime-core";
+import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
 import { useStore } from "vuex";
 import { closeModal, openModal } from "../../helper/modal";
-import { updateCustomerAddress } from "../../api/account";
 
 // Constant
 import { baseUrl } from "../../constant";
@@ -11,6 +10,8 @@ import { baseUrl } from "../../constant";
 import SelectCity from "../SelectCity.vue";
 import SelectDistrict from "../SelectDistrict.vue";
 import SelectCommune from "../SelectCommune.vue";
+import { resolveErrorMessage } from "../../helper/resolveErrorMessage";
+import { updateCartShippingAddress } from "../../api";
 
 export default defineComponent({
   components: {
@@ -23,24 +24,15 @@ export default defineComponent({
     const store = useStore();
 
     // state
-    const shippingInfo = ref({
-      bill_fullname: "",
-      bill_phone: "",
+    const newShippingInfo = ref({
       type_send: 1,
-      fullname: "",
-      phone: "",
-      full_address: "",
-      province_id: "",
-      province_name: "",
-      commune_id: "",
-      commune_name: "",
-      district_id: "",
-      district_name: "",
     });
+    const guestShippingInfo = computed(() => store.state.guestShippingInfo);
+    const isEdit = ref(false);
 
     const onSelectProvince = ({ id, name }) => {
-      shippingInfo.value.province_id = id;
-      shippingInfo.value.province_name = name;
+      newShippingInfo.value.province_id = id;
+      newShippingInfo.value.province_name = name;
 
       resetDistrict();
       closeModal("cityModal");
@@ -48,8 +40,8 @@ export default defineComponent({
     };
 
     const onSelectDistrict = ({ id, name }) => {
-      shippingInfo.value.district_id = id;
-      shippingInfo.value.district_name = name;
+      newShippingInfo.value.district_id = id;
+      newShippingInfo.value.district_name = name;
 
       resetCommune();
       closeModal("districtModal");
@@ -57,22 +49,22 @@ export default defineComponent({
     };
 
     const onSelectCommune = ({ id, name }) => {
-      shippingInfo.value.commune_id = id;
-      shippingInfo.value.commune_name = name;
+      newShippingInfo.value.commune_id = id;
+      newShippingInfo.value.commune_name = name;
 
       closeModal("wardModal");
     };
 
     const resetDistrict = () => {
-      shippingInfo.value.district_id = "";
-      shippingInfo.value.district_name = "";
-      shippingInfo.value.commune_id = "";
-      shippingInfo.value.commune_name = "";
+      newShippingInfo.value.district_id = "";
+      newShippingInfo.value.district_name = "";
+      newShippingInfo.value.commune_id = "";
+      newShippingInfo.value.commune_name = "";
     };
 
     const resetCommune = () => {
-      shippingInfo.value.commune_id = "";
-      shippingInfo.value.commune_name = "";
+      newShippingInfo.value.commune_id = "";
+      newShippingInfo.value.commune_name = "";
     };
 
     const goBackSelectProvince = () => {
@@ -85,10 +77,118 @@ export default defineComponent({
       openModal("districtModal");
     };
 
+    const validate = () => {
+      const {
+        bill_fullname,
+        bill_phone,
+        type_send = 1,
+        fullname,
+        phone,
+        address,
+        province_id,
+        commune_id,
+        district_id,
+      } = newShippingInfo.value;
+      if (
+        !bill_fullname ||
+        !bill_phone ||
+        !address ||
+        !province_id ||
+        !commune_id ||
+        !district_id ||
+        !bill_fullname.trim() ||
+        !bill_phone.trim() ||
+        !address.trim()
+      ) {
+        store.commit("setError", "Vui lòng nhập đầy đủ thông tin nhận hàng!");
+        return false;
+      }
+
+      let vnf_regex = /((09|03|07|08|05)+([0-9]{8})\b)/g;
+      if (vnf_regex.test(bill_phone) == false) {
+        store.dispatch(
+          "setError",
+          "Số điện thoại của bạn không đúng định dạng!"
+        );
+        return false;
+      }
+
+      vnf_regex = /((09|03|07|08|05)+([0-9]{8})\b)/g;
+      if (type_send === 2) {
+        if (!fullname || !phone || !fullname.trim() || !phone.trim()) {
+          store.commit("setError", "Vui lòng nhập đầy đủ thông tin nhận hàng!");
+          return false;
+        }
+
+        if (vnf_regex.test(phone) == false) {
+          store.dispatch(
+            "setError",
+            "Số điện thoại của bạn không đúng định dạng!"
+          );
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    const onEditClick = (type) => {
+      newShippingInfo.value = {
+        ...guestShippingInfo.value,
+        type_send: type,
+      };
+      isEdit.value = true;
+      store.commit("setEdit", true);
+      setTimeout(() => {
+        const el = document.getElementById(`form-tab-${type}`);
+
+        if (el) {
+          el.click();
+        }
+      }, 0);
+    };
+
+    const onSubmit = async () => {
+      const isValid = validate();
+
+      if (isValid) {
+        try {
+          store.dispatch("setLoading", true);
+
+          if (newShippingInfo.value.type_send === 1) {
+            await updateCartShippingAddress({
+              ...newShippingInfo.value,
+              phone: "",
+              full_name: "",
+            });
+          } else {
+            await updateCartShippingAddress({
+              ...newShippingInfo.value,
+              full_name: newShippingInfo.value.fullname,
+            });
+          }
+
+          await store.dispatch("getCartInfo");
+          await store.dispatch("setGuestShippingInfo");
+
+          isEdit.value = false;
+          store.commit("setEdit", false);
+        } catch (err) {
+          store.dispatch("setError", resolveErrorMessage(err));
+        } finally {
+          store.dispatch("setLoading", false);
+        }
+      }
+    };
+
     return {
+      isEdit,
       baseUrl,
-      shippingInfo,
+      newShippingInfo,
+      guestShippingInfo,
+      onSubmit,
       openModal,
+      onEditClick,
       onSelectCommune,
       onSelectDistrict,
       onSelectProvince,
@@ -101,22 +201,21 @@ export default defineComponent({
 
 <template>
   <div class="checkout__body checkout__body--outside pt-2">
-    <div id="buyer-info" class="d-none">
-      <div class="checkout__body__signed">
+    <div id="buyer-info" v-if="guestShippingInfo.bill_fullname && !isEdit">
+      <div
+        class="checkout__body__signed"
+        v-if="guestShippingInfo.type_send === 1"
+      >
         <div class="checkout__body__head">
           <div class="checkout__body__head__left">
             <p class="checkout__body__title d-flex align-items-center">
-              Nguyễn Văn Nam
-              <span class="badge badge-blue-custom badge-sm ms-10"
-                >Mặc định</span
-              >
+              {{ guestShippingInfo.bill_fullname }}
             </p>
           </div>
           <div class="checkout__body__head__right">
             <button
               class="btn btn-fit buyer-info__head__btn"
-              data-bs-toggle="modal"
-              data-bs-target="#locationModal"
+              @click="() => onEditClick(1)"
             >
               <img
                 :src="`${baseUrl}/1111111111111111111/images/edit-37.svg`"
@@ -127,15 +226,53 @@ export default defineComponent({
           </div>
         </div>
         <div class="text-63 ls-20">
-          <p class="mb-1">0357 787 431</p>
+          <p class="mb-1">{{ guestShippingInfo.bill_phone }}</p>
           <p class="mb-0">
-            Số 9 đường số 12, Phường 11, Quận Gò Vấp Thành phố Hồ Chí Minh
+            {{ guestShippingInfo.address }}
+          </p>
+        </div>
+      </div>
+      <div class="checkout__body__signed" v-else>
+        <div class="checkout__body__head">
+          <div class="checkout__body__head__left">
+            <div class="checkout__body__title">Thông tin người gữi</div>
+            <p class="checkout__body__title d-flex align-items-center">
+              {{ guestShippingInfo.bill_fullname }}
+            </p>
+          </div>
+          <div class="checkout__body__head__right">
+            <button
+              class="btn btn-fit buyer-info__head__btn"
+              @click="() => onEditClick(2)"
+            >
+              <img
+                :src="`${baseUrl}/1111111111111111111/images/edit-37.svg`"
+                alt=""
+                width="18"
+              />
+            </button>
+          </div>
+        </div>
+        <div class="text-63 ls-20">
+          <p class="mb-1">{{ guestShippingInfo.bill_phone }}</p>
+        </div>
+        <div class="checkout__body__head mt-3">
+          <div class="checkout__body__head__left">
+            <div class="checkout__body__title">Thông tin người nhận</div>
+            <p class="checkout__body__title d-flex align-items-center">
+              {{ guestShippingInfo.fullname }}
+            </p>
+          </div>
+        </div>
+        <div class="text-63 ls-20">
+          <p class="mb-1">{{ guestShippingInfo.phone }}</p>
+          <p class="mb-0">
+            {{ guestShippingInfo.address }}
           </p>
         </div>
       </div>
     </div>
-    <form action="" id="buyer-info-edit">
-      {{ shippingInfo }}
+    <form action="" id="buyer-info-edit" v-if="isEdit">
       <div class="row row-cols-1 g-3">
         <div class="col">
           <label class="fw-medium">Họ và tên</label>
@@ -143,7 +280,7 @@ export default defineComponent({
             type="text"
             class="form-control form-control--underline"
             placeholder="VD: Văn Nam"
-            v-model="shippingInfo.bill_fullname"
+            v-model="newShippingInfo.bill_fullname"
           />
           <div class="invalid-feedback"></div>
         </div>
@@ -153,7 +290,7 @@ export default defineComponent({
             type="tel"
             class="form-control form-control--underline"
             placeholder="VD: 0905 555 000"
-            v-model="shippingInfo.bill_phone"
+            v-model="newShippingInfo.bill_phone"
           />
           <div class="invalid-feedback"></div>
         </div>
@@ -170,7 +307,7 @@ export default defineComponent({
                   role="tab"
                   aria-controls="home"
                   aria-selected="true"
-                  @click="() => shippingInfo.type_send = 1"
+                  @click="() => (newShippingInfo.type_send = 1)"
                 >
                   <div></div>
                   Tôi là người nhận
@@ -186,7 +323,7 @@ export default defineComponent({
                   role="tab"
                   aria-controls="profile"
                   aria-selected="false"
-                  @click="() => shippingInfo.type_send = 2"
+                  @click="() => (newShippingInfo.type_send = 2)"
                 >
                   <div></div>
                   Tôi muốn gửi tặng
@@ -214,7 +351,7 @@ export default defineComponent({
                         form-control--icon-location
                       "
                       placeholder="VD: 20 Hai Bà Trưng"
-                      v-model="shippingInfo.full_address"
+                      v-model="newShippingInfo.address"
                     />
                     <div class="invalid-feedback"></div>
                   </div>
@@ -231,7 +368,7 @@ export default defineComponent({
                       placeholder="VD : Hồ Chí Minh"
                       autocomplete="off"
                       style="background-color: white"
-                      v-model="shippingInfo.province_name"
+                      v-model="newShippingInfo.province_name"
                       @click="() => openModal('cityModal')"
                     />
                     <div class="invalid-feedback"></div>
@@ -250,8 +387,8 @@ export default defineComponent({
                       autocomplete="off"
                       readonly
                       style="background-color: white"
-                      v-model="shippingInfo.district_name"
-                      :disabled="!shippingInfo.province_name"
+                      v-model="newShippingInfo.district_name"
+                      :disabled="!newShippingInfo.province_name"
                       @click="() => openModal('districtModal')"
                     />
                     <div class="invalid-feedback"></div>
@@ -271,8 +408,8 @@ export default defineComponent({
                       placeholder="VD: phường 11"
                       autocomplete="off"
                       style="background-color: white"
-                      v-model="shippingInfo.commune_name"
-                      :disabled="!shippingInfo.district_name"
+                      v-model="newShippingInfo.commune_name"
+                      :disabled="!newShippingInfo.district_name"
                       readonly
                       @click="() => openModal('wardModal')"
                     />
@@ -298,7 +435,7 @@ export default defineComponent({
                         form-control--icon-location
                       "
                       placeholder="VD: Văn Nam"
-                      v-model="shippingInfo.fullname"
+                      v-model="newShippingInfo.fullname"
                     />
                     <div class="invalid-feedback"></div>
                   </div>
@@ -313,7 +450,7 @@ export default defineComponent({
                         form-control--icon-location
                       "
                       placeholder="VD: 0905 555 000"
-                      v-model="shippingInfo.phone"
+                      v-model="newShippingInfo.phone"
                     />
                     <div class="invalid-feedback"></div>
                   </div>
@@ -330,7 +467,7 @@ export default defineComponent({
                         form-control--icon-location
                       "
                       placeholder="VD: 20 Hai Bà Trưng"
-                      v-model="shippingInfo.full_address"
+                      v-model="newShippingInfo.address"
                     />
                     <div class="invalid-feedback"></div>
                   </div>
@@ -347,7 +484,7 @@ export default defineComponent({
                       placeholder="VD : Hồ Chí Minh"
                       autocomplete="off"
                       style="background-color: white"
-                      v-model="shippingInfo.province_name"
+                      v-model="newShippingInfo.province_name"
                       @click="() => openModal('cityModal')"
                     />
                     <div class="invalid-feedback"></div>
@@ -366,8 +503,8 @@ export default defineComponent({
                       autocomplete="off"
                       readonly
                       style="background-color: white"
-                      v-model="shippingInfo.district_name"
-                      :disabled="!shippingInfo.province_name"
+                      v-model="newShippingInfo.district_name"
+                      :disabled="!newShippingInfo.province_name"
                       @click="() => openModal('districtModal')"
                     />
                     <div class="invalid-feedback"></div>
@@ -387,8 +524,8 @@ export default defineComponent({
                       placeholder="VD: phường 11"
                       autocomplete="off"
                       style="background-color: white"
-                      v-model="shippingInfo.commune_name"
-                      :disabled="!shippingInfo.district_name"
+                      v-model="newShippingInfo.commune_name"
+                      :disabled="!newShippingInfo.district_name"
                       readonly
                       @click="() => openModal('wardModal')"
                     />
@@ -401,8 +538,8 @@ export default defineComponent({
         </div>
         <div class="col">
           <button
-            type="submit"
             class="btn btn-outline-37-white fz-14 fw-semi w-100 py-2 ls-0"
+            @click.prevent="onSubmit"
           >
             Lưu thông tin
           </button>
@@ -416,14 +553,14 @@ export default defineComponent({
 
   <!-- Select district_name -->
   <SelectDistrict
-    :province_id="shippingInfo.province_id"
+    :province_id="newShippingInfo.province_id"
     @onSelect="onSelectDistrict"
     @goBack="goBackSelectProvince"
   />
 
   <!-- Select commune_name -->
   <SelectCommune
-    :district_id="shippingInfo.district_id"
+    :district_id="newShippingInfo.district_id"
     @onSelect="onSelectCommune"
     @goBack="goBackSelectDistrict"
   />

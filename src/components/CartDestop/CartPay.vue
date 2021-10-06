@@ -25,7 +25,7 @@ export default defineComponent({
     const bankCode = computed(() => store.state.bankCode);
     const cart = computed(() => store.state.cart);
     const billingAddress = computed(() => store.state.billingAddress);
-    const shippingAddress = computed(() => store.state.shippingAddress);
+    const guestShippingInfo = computed(() => store.state.guestShippingInfo);
     const shippingAddressEdit = ref({});
     const isValidShippingAddress = computed(
       () => store.getters.isValidShippingAddress
@@ -44,7 +44,7 @@ export default defineComponent({
 
     const setEdit = () => {
       shippingAddressEdit.value = {
-        ...shippingAddress.value,
+        ...guestShippingInfo.value,
       };
       store.commit("setEdit", true);
     };
@@ -54,7 +54,7 @@ export default defineComponent({
       //await getShippingSetting();
 
       await store.dispatch("getCustomerAddressList");
-      await store.dispatch("setDefaultShippingAddress");
+      await store.dispatch("setGuestShippingInfo");
       store.dispatch("getShippingStandard");
       getPaymentMethod();
 
@@ -105,8 +105,8 @@ export default defineComponent({
         });
 
         await store.dispatch("getCart");
-        await store.dispatch("setDefaultShippingAddress");
-        await store.dispatch("ahomoveShippingFee");
+        await store.dispatch("setGuestShippingInfo");
+        await store.dispatch("ahamoveShippingFee");
 
         if (!ahamove.value || !ahamove.value.total_price) {
           store.commit("setQuickShippingType", 0);
@@ -184,7 +184,7 @@ export default defineComponent({
       store.commit("setShippingType", value);
 
       if (value == 2) {
-        await store.dispatch("ahomoveShippingFee");
+        await store.dispatch("ahamoveShippingFee");
       }
     };
 
@@ -245,7 +245,7 @@ export default defineComponent({
       paymentMethod,
       paymentMethods,
       billingAddress,
-      shippingAddress,
+      guestShippingInfo,
       shippingStandard,
       quickShippingType,
       shippingAddressEdit,
@@ -290,10 +290,10 @@ export default defineComponent({
                 <div class="checkout__body__head">
                   <div class="checkout__body__head__left">
                     <p class="checkout__body__title d-flex align-items-center">
-                      {{ shippingAddress.name }}
+                      {{ guestShippingInfo.name }}
                       <span
                         class="badge badge-blue-custom badge-sm ms-10"
-                        v-if="shippingAddress.is_default"
+                        v-if="guestShippingInfo.is_default"
                         >Mặc định</span
                       >
                     </p>
@@ -310,10 +310,10 @@ export default defineComponent({
                 </div>
                 <div class="text-63 ls-20">
                   <p class="mb-1">
-                    {{ shippingAddress.phone_number }}
+                    {{ guestShippingInfo.phone_number }}
                   </p>
                   <p class="mb-0">
-                    {{ shippingAddress.address }}
+                    {{ guestShippingInfo.address }}
                   </p>
                 </div>
               </div>

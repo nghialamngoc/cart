@@ -11,3 +11,7 @@
 .address_selected > .title {
   color: #004377 !important;
 }
+
+.heart-checked {
+  color: #fd79a8 !important;
+}

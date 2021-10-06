@@ -7,6 +7,9 @@ export default defineComponent({
   emits: ["onChangeStep"],
   setup(props, { emit }) {
     const goBack = () => {
+      if (props.step === 1) {
+        window.history.back();
+      }
       if (props.step === 2) {
         emit("onChangeStep", 1);
       }

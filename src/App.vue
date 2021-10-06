@@ -1,15 +1,15 @@
 <script>
-import Cart from "./components/Cart.vue";
+import ProfileInfo from "./components/ProfileInfo.vue";
 
 export default {
   components: {
-    Cart,
+    ProfileInfo,
   },
 };
 </script>
 
 <template>
-  <Cart></Cart>
+  <ProfileInfo></ProfileInfo>
 </template>
 
 <style></style>

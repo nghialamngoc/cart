@@ -1,10 +1,15 @@
 <script>
-import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  ref,
+  watch,
+} from "@vue/runtime-core";
 import { useStore } from "vuex";
 
 // Api
 import { getPaymentMethodList, updateCartShippingAddress } from "../api";
-import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 
 // Helper
 import { closeModal, openModal } from "../helper/modal";
@@ -30,16 +35,16 @@ export default defineComponent({
 
     // state
     const isEdit = computed(() => store.state.isEdit);
+    const bankList = computed(() => store.state.bankList);
     const bankCode = computed(() => store.state.bankCode);
     const cart = computed(() => store.state.cart);
     const customerShippingAddress = computed(
       () => store.state.customerShippingAddress
     );
-    const isValidCustomerShippingAddress = computed(
-      () => store.getters.isValidCustomerShippingAddress
-    );
+
     const shippingStandard = computed(() => store.state.shippingStandard);
     const shippingType = computed(() => store.state.shippingType);
+    const quickShippingList = computed(() => store.state.quickShippingList);
     const quickShippingType = computed(() => store.state.quickShippingType);
     const isFreeShip = computed(() => store.getters.isFreeShip);
     const paymentMethod = computed(() => store.state.paymentMethod);
@@ -48,8 +53,6 @@ export default defineComponent({
     const customerId = computed(() => store.getters.customerId);
     const paymentMethods = computed(() => store.state.paymentMethods);
     const methodType = computed(() => store.getters.paymentMethodType);
-    const ahamove = computed(() => store.state.ahamove);
-    const grap = computed(() => store.state.grap);
 
     // life
     onMounted(async () => {
@@ -57,19 +60,35 @@ export default defineComponent({
 
       if (customerId.value != "") {
         await store.dispatch("getCustomerAddressList");
+      } else {
+        await store.dispatch("setGuestShippingInfo");
       }
-      await store.dispatch("setDefaultShippingAddress");
+
+      await store.dispatch("getQuickShippingList");
       store.dispatch("getShippingStandard");
       getPaymentMethod();
-
-      if (!isValidCustomerShippingAddress.value) {
-        store.commit("setEdit", true);
-      }
     });
+
+    watch(
+      () => customerShippingAddress.value,
+      () => {
+        if (shippingType.value === 2) {
+          quickShippingList.value.forEach(async (element) => {
+            if (element.carrier_code === "AHAMOVE") {
+              await store.dispatch("ahamoveShippingFee");
+            }
+          });
+        }
+      }
+    );
 
     const getPaymentMethod = async () => {
       try {
-        const data = await getPaymentMethodList();
+        const { data, bank } = await getPaymentMethodList();
+
+        if (Array.isArray(bank) && bank.length > 0) {
+          store.commit("setBankList", bank)
+        }
 
         if (Array.isArray(data) && data.length > 0) {
           store.commit("setPaymentMethods", data);
@@ -84,38 +103,25 @@ export default defineComponent({
       store.commit("setShippingType", value);
 
       if (value == 2) {
-        await store.dispatch("ahomoveShippingFee");
+        quickShippingList.value.forEach(async (element) => {
+          if (element.carrier_code === "AHAMOVE") {
+            await store.dispatch("ahamoveShippingFee");
+          }
+        });
       }
     };
 
-    const changeQuickShippingType = (value) => {
-      if (value === 2) {
-        if (!grap.value || !grap.value.distance || !grap.value.total_price) {
-          store.commit(
-            "setError",
-            "Phương thức giao hàng không khả dụng. Bạn vui lòng chọn phương thức khác hoặc nhập chính xác thông tin nhận hàng!"
-          );
+    const changeQuickShippingType = (shipping) => {
+      if (!shipping.distance || !shipping.total_price) {
+        store.commit(
+          "setError",
+          "Phương thức giao hàng không khả dụng. Bạn vui lòng chọn phương thức khác hoặc nhập chính xác thông tin nhận hàng!"
+        );
 
-          return;
-        }
+        return;
       }
 
-      if (value === 3) {
-        if (
-          !ahamove.value ||
-          !ahamove.value.distance ||
-          !ahamove.value.total_price
-        ) {
-          store.commit(
-            "setError",
-            "Phương thức giao hàng không khả dụng. Bạn vui lòng chọn phương thức khác hoặc nhập chính xác thông tin nhận hàng!"
-          );
-
-          return;
-        }
-      }
-
-      store.commit("setQuickShippingType", value);
+      store.commit("setQuickShippingType", shipping.carrier_id);
     };
 
     const changePaymentMethod = (value) => {
@@ -131,13 +137,12 @@ export default defineComponent({
     };
 
     return {
-      grap,
       cart,
       note,
       isEdit,
       baseUrl,
       boxName,
-      ahamove,
+      bankList,
       bankCode,
       customerId,
       methodType,
@@ -145,9 +150,10 @@ export default defineComponent({
       shippingType,
       paymentMethod,
       paymentMethods,
-      customerShippingAddress,
       shippingStandard,
       quickShippingType,
+      quickShippingList,
+      customerShippingAddress,
 
       date,
       money,
@@ -156,7 +162,6 @@ export default defineComponent({
       onBankChange,
       changeShippingType,
       changePaymentMethod,
-
       changeQuickShippingType,
     };
   },
@@ -306,7 +311,7 @@ export default defineComponent({
                 </div>
               </div>
             </label>
-            <label class="box-picker">
+            <label class="box-picker" v-if="quickShippingList.length > 0">
               <input
                 type="radio"
                 class="box-picker__input"
@@ -347,98 +352,35 @@ export default defineComponent({
                 <div class="select-transport-unit">
                   <label
                     class="box-picker box-picker--2"
-                    @click="() => changeQuickShippingType(2)"
+                    v-for="(shippingType, index) in quickShippingList"
+                    :key="index"
+                    @click="() => changeQuickShippingType(shippingType)"
                   >
                     <div class="box-picker__checkmark">
                       <div class="row gx-2 align-items-center">
                         <div
                           :class="
-                            grap && grap.distance && grap.total_price
+                            shippingType.distance && shippingType.total_price
                               ? 'col-7'
                               : 'col-12'
                           "
                         >
                           <div class="unit-item">
                             <div class="unit-item__logo">
-                              <img
-                                :src="`${baseUrl}/1111111111111111111/images/grab.png`"
-                                alt=""
-                              />
+                              <img :src="shippingType.image" alt="" />
                             </div>
                             <div class="unit-item__info">
                               <p class="unit-item__title">Grab</p>
                               <p
                                 class="unit-item__desc"
-                                v-if="grap && grap.distance && grap.total_price"
-                              >
-                                Phí ship:
-                                <span class="fw-semi">{{
-                                  money(grap.total_price)
-                                }}</span>
-                              </p>
-                              <p class="unit-item__desc" v-else>
-                                Phương thức vận chuyển chưa khả dụng với thông
-                                tin nhận hàng
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          class="col-4"
-                          v-if="grap && grap.distance && grap.total_price"
-                        >
-                          <div class="distance">
-                            <img
-                              :src="`${baseUrl}/1111111111111111111/images/distance.svg`"
-                              alt=""
-                            />
-                            {{ grap.distance }}km
-                          </div>
-                        </div>
-                        <div class="col-1 text-end">
-                          <div v-if="quickShippingType === 2">
-                            <img
-                              :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
-                              alt=""
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </label>
-                  <label
-                    class="box-picker box-picker--2"
-                    @click="() => changeQuickShippingType(3)"
-                  >
-                    <div class="box-picker__checkmark">
-                      <div class="row gx-2 align-items-center">
-                        <div
-                          :class="
-                            ahamove && ahamove.distance && ahamove.total_price
-                              ? 'col-7'
-                              : 'col-12'
-                          "
-                        >
-                          <div class="unit-item">
-                            <div class="unit-item__logo">
-                              <img
-                                :src="`${baseUrl}/1111111111111111111/images/ahamove.png`"
-                                alt=""
-                              />
-                            </div>
-                            <div class="unit-item__info">
-                              <p class="unit-item__title">Ahamove</p>
-                              <p
-                                class="unit-item__desc"
                                 v-if="
-                                  ahamove &&
-                                  ahamove.distance &&
-                                  ahamove.total_price
+                                  shippingType.distance &&
+                                  shippingType.total_price
                                 "
                               >
                                 Phí ship:
                                 <span class="fw-semi">{{
-                                  money(ahamove.total_price)
+                                  money(shippingType.total_price)
                                 }}</span>
                               </p>
                               <p class="unit-item__desc" v-else>
@@ -451,7 +393,7 @@ export default defineComponent({
                         <div
                           class="col-4"
                           v-if="
-                            ahamove && ahamove.distance && ahamove.total_price
+                            shippingType.distance && shippingType.total_price
                           "
                         >
                           <div class="distance">
@@ -459,11 +401,13 @@ export default defineComponent({
                               :src="`${baseUrl}/1111111111111111111/images/distance.svg`"
                               alt=""
                             />
-                            {{ ahamove.distance }}km
+                            {{ shippingType.distance }}km
                           </div>
                         </div>
                         <div class="col-1 text-end">
-                          <div v-if="quickShippingType === 3">
+                          <div
+                            v-if="quickShippingType === shippingType.carrier_id"
+                          >
                             <img
                               :src="`${baseUrl}/1111111111111111111/images/check-green.svg`"
                               alt=""
@@ -540,28 +484,7 @@ export default defineComponent({
                   :value="bankCode"
                   @change="(e) => onBankChange(e.target.value)"
                 >
-                  <option value="NCB">Ngan hang NCB</option>
-                  <option value="AGRIBANK">Ngan hang Agribank</option>
-                  <option value="SCB">Ngan hang SCB</option>
-                  <option value="SACOMBANK">Ngan hang SacomBank</option>
-                  <option value="EXIMBANK">Ngan hang EximBank</option>
-                  <option value="MSBANK">Ngan hang MSBANK</option>
-                  <option value="NAMABANK">Ngan hang NamABank</option>
-                  <option value="VNMART">Vi dien tu VnMart</option>
-                  <option value="VIETINBANK">Ngan hang Vietinbank</option>
-                  <option value="VIETCOMBANK">Ngan hang VCB</option>
-                  <option value="HDBANK">Ngan hang HDBank</option>
-                  <option value="DONGABANK">Ngan hang Dong A</option>
-                  <option value="TPBANK">Ngân hàng TPBank</option>
-                  <option value="OJB">Ngân hàng OceanBank</option>
-                  <option value="BIDV">Ngân hàng BIDV</option>
-                  <option value="TECHCOMBANK">Ngân hàng Techcombank</option>
-                  <option value="VPBANK">Ngan hang VPBank</option>
-                  <option value="MBBANK">Ngan hang MBBank</option>
-                  <option value="ACB">Ngan hang ACB</option>
-                  <option value="OCB">Ngan hang OCB</option>
-                  <option value="IVB">Ngan hang IVB</option>
-                  <option value="VISA">Thanh toan qua VISA/MASTER</option>
+                  <option :value="bank.code" v-for="(bank, index) in bankList" :key="index">{{bank.name}}</option>
                 </select>
               </template>
             </div>

@@ -43,6 +43,7 @@ export default defineComponent({
     // Lifecycle
     onBeforeMount(async () => {
       await store.dispatch("init");
+      store.dispatch("getProductWishedList");
     });
 
     watch(cart.value, () => {
@@ -79,21 +80,16 @@ export default defineComponent({
 </script>
 
 <template>
-  <main class="main" id="main">
-    <CartHeader :step="step" @onChangeStep="onChangeStep" />
-    <template v-if="productList.length === 0">
-      Giỏ hàng trống mua ngay
-    </template>
-    <template v-else>
-      <CartInfo v-if="step === 1" />
-      <CartPay v-if="step === 2" />
-      <CartSuccess v-if="step === 3" />
+  <CartHeader :step="step" @onChangeStep="onChangeStep" />
+  <main class="main" id="main" style="min-height: calc(100vh - 50px - 92px)">
+    <CartInfo v-if="step === 1" />
+    <CartPay v-if="step === 2" />
+    <CartSuccess v-if="step === 3" />
 
-      <!-- Cart Summary -->
-      <CartTotalSumary v-if="step != 3" />
-    </template>
+    <!-- Cart Summary -->
   </main>
 
+  <CartTotalSumary v-if="step != 3" />
   <ErrorDialog
     :isOpen="error"
     :message="errorMessage"
