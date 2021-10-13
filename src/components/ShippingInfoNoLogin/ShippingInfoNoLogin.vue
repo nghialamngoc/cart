@@ -201,7 +201,7 @@ export default defineComponent({
 
 <template>
   <div class="checkout__body checkout__body--outside pt-2">
-    <div id="buyer-info" v-if="guestShippingInfo.bill_fullname && !isEdit">
+    <div id="buyer-info" v-if="guestShippingInfo.bill_fullname != '' && !isEdit">
       <div
         class="checkout__body__signed"
         v-if="guestShippingInfo.type_send === 1"
@@ -272,7 +272,7 @@ export default defineComponent({
         </div>
       </div>
     </div>
-    <form action="" id="buyer-info-edit" v-if="isEdit">
+    <form action="" id="buyer-info-edit" v-if="isEdit || !guestShippingInfo.bill_fullname">
       <div class="row row-cols-1 g-3">
         <div class="col">
           <label class="fw-medium">Họ và tên</label>

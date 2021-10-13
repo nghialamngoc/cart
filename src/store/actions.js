@@ -282,6 +282,8 @@ export default {
 
           commit("setCustomerShippingAddress", address);
         }
+      } else {
+        commit("setEdit", true)
       }
     } catch (err) {
       console.log(err);

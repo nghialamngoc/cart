@@ -53,6 +53,7 @@ export default defineComponent({
     const customerId = computed(() => store.getters.customerId);
     const paymentMethods = computed(() => store.state.paymentMethods);
     const methodType = computed(() => store.getters.paymentMethodType);
+    const shippingAddressIsHCM = computed(() => store.getters.shippingAddressIsHCM);
 
     // life
     onMounted(async () => {
@@ -68,6 +69,12 @@ export default defineComponent({
       store.dispatch("getShippingStandard");
       getPaymentMethod();
     });
+
+    watch(() => shippingAddressIsHCM.value, () => {
+      if (!shippingAddressIsHCM.value && shippingType.value === 2) {
+        store.commit("setShippingType", 1);
+      }
+    })
 
     watch(
       () => customerShippingAddress.value,
@@ -87,7 +94,7 @@ export default defineComponent({
         const { data, bank } = await getPaymentMethodList();
 
         if (Array.isArray(bank) && bank.length > 0) {
-          store.commit("setBankList", bank)
+          store.commit("setBankList", bank);
         }
 
         if (Array.isArray(data) && data.length > 0) {
@@ -153,6 +160,7 @@ export default defineComponent({
       shippingStandard,
       quickShippingType,
       quickShippingList,
+      shippingAddressIsHCM,
       customerShippingAddress,
 
       date,
@@ -311,7 +319,7 @@ export default defineComponent({
                 </div>
               </div>
             </label>
-            <label class="box-picker" v-if="quickShippingList.length > 0">
+            <label class="box-picker" v-if="quickShippingList.length > 0 && shippingAddressIsHCM">
               <input
                 type="radio"
                 class="box-picker__input"
@@ -484,7 +492,13 @@ export default defineComponent({
                   :value="bankCode"
                   @change="(e) => onBankChange(e.target.value)"
                 >
-                  <option :value="bank.code" v-for="(bank, index) in bankList" :key="index">{{bank.name}}</option>
+                  <option
+                    :value="bank.code"
+                    v-for="(bank, index) in bankList"
+                    :key="index"
+                  >
+                    {{ bank.name }}
+                  </option>
                 </select>
               </template>
             </div>
@@ -562,9 +576,11 @@ export default defineComponent({
                   {{
                     product.type === 2
                       ? "0đ (Quà tặng)"
-                      : `${Intl.NumberFormat("vi-VN").format(
-                          product.price_sale
-                        )}đ`
+                      : product.flash_sale != -1
+                      ? money(product.flash_sale)
+                      : product.price_sale != -1
+                      ? money(product.price_sale)
+                      : money(product.price_retail)
                   }}
                 </p>
               </div>

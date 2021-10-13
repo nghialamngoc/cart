@@ -364,12 +364,12 @@ export default defineComponent({
               </p>
               <p
                 class="m-cart__price"
-                v-if="product.price_sale != 0 || product.flash_sale != 0"
+                v-if="product.price_sale != -1 || product.flash_sale != -1"
               >
                 {{
-                  product.flash_sale
+                  product.flash_sale != -1
                     ? Intl.NumberFormat("vi-VN").format(product.flash_sale)
-                    : product.price_sale
+                    : product.price_sale != -1
                     ? Intl.NumberFormat("vi-VN").format(product.price_sale)
                     : Intl.NumberFormat("vi-VN").format(product.price_retail)
                 }}đ
@@ -589,12 +589,14 @@ export default defineComponent({
                   <p class="pack-item__price">
                     <span class="pack-item__price__number"
                       >{{
-                        Intl.NumberFormat("vi-VN").format(box.price_retail)
+                        box.price_sale != -1
+                          ? Intl.NumberFormat("vi-VN").format(box.price_sale)
+                          : Intl.NumberFormat("vi-VN").format(box.price_retail)
                       }}đ</span
                     >
                     <span
                       class="pack-item__price__text"
-                      v-if="box.price_retail === 0"
+                      v-if="box.price_sale === 0 && box.price_retail === 0"
                       >(Miễn phí)</span
                     >
                   </p>
@@ -802,7 +804,7 @@ export default defineComponent({
                         <p class="pd-item__bottom__price">
                           <del
                             class="pd-item__bottom__price__old"
-                            v-if="product.price_sale != 0"
+                            v-if="product.price_sale != -1"
                             >{{
                               Intl.NumberFormat("vi-VN").format(
                                 product.price_retail
@@ -818,7 +820,7 @@ export default defineComponent({
                           </span>
                           <span
                             class="pd-item__bottom__price__new"
-                            v-if="product.price_sale != 0"
+                            v-if="product.price_sale != -1"
                           >
                             {{
                               Intl.NumberFormat("vi-VN").format(

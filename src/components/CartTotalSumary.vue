@@ -64,7 +64,6 @@ export default defineComponent({
 
     const createOrder = async () => {
       const data = cart.value;
-      debugger
       try {
         const payload = {
           cash: 0,

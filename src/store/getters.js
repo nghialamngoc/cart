@@ -144,6 +144,17 @@ export default {
     return true;
   },
 
+  shippingAddressIsHCM(state, getters) {
+    if (!getters.isValidCustomerShippingAddress && !getters.isValidShippingAddress) {
+      return false;
+    }
+
+    return (
+      state.customerShippingAddress.province_id === 1 ||
+      state.guestShippingInfo.province_id === 1
+    );
+  },
+
   boxName(state) {
     if (!state.cart || !state.cart.detail) {
       return "";
@@ -190,10 +201,12 @@ export default {
     }
 
     if (state.shippingType == 2) {
-      const selected = state.quickShippingList.find(x => x.carrier_id === state.quickShippingType)
+      const selected = state.quickShippingList.find(
+        (x) => x.carrier_id === state.quickShippingType
+      );
 
       if (selected) {
-        result = selected.total_price
+        result = selected.total_price;
       }
     }
 
