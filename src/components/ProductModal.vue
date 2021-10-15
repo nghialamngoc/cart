@@ -83,7 +83,8 @@ export default defineComponent({
 
       if (
         Array.isArray(data.product_videos) &&
-        data.product_videos.length > 0
+        data.product_videos.length > 0 &&
+        data.product_videos[0] != ""
       ) {
         result.push(
           ...data.product_videos.map((x) => {
@@ -432,7 +433,10 @@ export default defineComponent({
                       <div class="row align-items-center gx-3">
                         <div class="col-7">
                           <div class="pd-detail__flash-sale">
-                            <img :src="`${baseUrl}/1111111111111111111/images/light.svg`" alt="" />
+                            <img
+                              :src="`${baseUrl}/1111111111111111111/images/light.svg`"
+                              alt=""
+                            />
                             FLASH SALE
                           </div>
                           <div
@@ -767,7 +771,7 @@ export default defineComponent({
               justify-content-center
               add-to-cart-modal-btn
             "
-            :disabled="!productSelect.product_id || !colorSelect || !sizeSelect "
+            :disabled="!productSelect.product_id || !colorSelect || !sizeSelect"
             @click="onSubmit"
           >
             <img

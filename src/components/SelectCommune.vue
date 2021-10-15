@@ -27,8 +27,10 @@ export default defineComponent({
         return communeList.value;
       }
 
-      return communeList.value.filter((x) =>
-        x.name.includes(searchString.value)
+      return communeList.value.filter((x) => {
+          return x.name.toLowerCase().includes(searchString.value.toLowerCase()) ||
+          x.query.toLowerCase().includes(searchString.value.toLowerCase())
+        }
       );
     });
 

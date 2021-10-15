@@ -101,9 +101,9 @@ export default {
     }
   },
 
-  async getGiftList({ commit, state }) {
+  async getGiftList({ commit, state, getters }) {
     try {
-      const totalPrice = state.cart.total_price;
+      const totalPrice = getters.totalType1Price;
       commit("setLoading", true);
       const data = await getGiftList(totalPrice);
       commit("setGiftList", data);
@@ -292,12 +292,12 @@ export default {
     }
   },
 
-  async getShippingStandard({ commit, state }) {
+  async getShippingStandard({ commit, state, getters }) {
     try {
       commit("setLoading", true);
 
       const data = await getShippingStandard({
-        total_price: state.cart.total_price,
+        total_price: getters.totalType1Price,
         total_weight: state.cart.weight,
         province_id: state.guestShippingInfo.province_id
           ? state.guestShippingInfo.province_id.toString()

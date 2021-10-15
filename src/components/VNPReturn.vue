@@ -134,7 +134,7 @@ export default defineComponent({
                 }}</span>
               </div>
               <div class="col-4 text-end">
-                <button class="btn p-0 js-btn-copy" data-value="0000000">
+                <button class="btn p-0 js-btn-copy" :data-value="orderId">
                   <img
                     :src="`${baseUrl}/1111111111111111111/images/copy.svg`"
                     alt=""

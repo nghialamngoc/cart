@@ -28,8 +28,10 @@ export default defineComponent({
         return provinceList.value;
       }
 
-      return provinceList.value.filter((x) =>
-        x.name.includes(searchString.value)
+      return provinceList.value.filter(
+        (x) =>
+          x.name.toLowerCase().includes(searchString.value.toLowerCase()) ||
+          x.query.toLowerCase().includes(searchString.value.toLowerCase())
       );
     });
 
@@ -45,7 +47,7 @@ export default defineComponent({
     };
 
     const onSelectClick = (province) => {
-      emit("onSelect", province)
+      emit("onSelect", province);
     };
 
     return {
@@ -70,9 +72,7 @@ export default defineComponent({
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <p class="modal-title">
-            CHỌN TỈNH / THÀNH PHỐ
-          </p>
+          <p class="modal-title">CHỌN TỈNH / THÀNH PHỐ</p>
           <button
             type="button"
             class="btn-close"

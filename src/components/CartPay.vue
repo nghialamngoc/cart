@@ -54,6 +54,7 @@ export default defineComponent({
     const paymentMethods = computed(() => store.state.paymentMethods);
     const methodType = computed(() => store.getters.paymentMethodType);
     const shippingAddressIsHCM = computed(() => store.getters.shippingAddressIsHCM);
+    const paymentSelected = computed(() => store.getters.paymentSelected);
 
     // life
     onMounted(async () => {
@@ -157,6 +158,7 @@ export default defineComponent({
       shippingType,
       paymentMethod,
       paymentMethods,
+      paymentSelected,
       shippingStandard,
       quickShippingType,
       quickShippingList,
@@ -503,9 +505,7 @@ export default defineComponent({
               </template>
             </div>
             <div class="ls-20 mt-3">
-              <strong class="fw-600">Tiền mặt:</strong> Bạn sẽ thanh toán bằng
-              tiền mặt cho nhân viên giao hàng khi thanh toán. Vui lòng kiểm tra
-              tình trạng sản phẩm và hóa đơn khi thanh toán.
+              <strong class="fw-600">{{paymentSelected.name}}:</strong> {{paymentSelected.description}}
             </div>
           </div>
         </section>

@@ -14,7 +14,6 @@ export default defineComponent({
     //state
     const note = ref("");
     const orderId = computed(() => store.state.orderId);
-    const paymentMethodType = computed(() => store.getters.paymentMethodType);
     const orderExperience = computed(() => store.state.orderExperience);
     const customerId = computed(() => store.getters.customerId);
     const customerShippingAddress = computed(
@@ -22,6 +21,7 @@ export default defineComponent({
     );
     const guestShippingInfo = computed(() => store.state.guestShippingInfo);
     const subPrice = computed(() => store.getters.subPrice);
+    const paymentSelected = computed(() => store.getters.paymentSelected);
 
     onMounted(() => {
       setTimeout(() => {
@@ -83,8 +83,8 @@ export default defineComponent({
       subPrice,
       isDisable,
       customerId,
+      paymentSelected,
       guestShippingInfo,
-      paymentMethodType,
       orderExperience,
       customerShippingAddress,
       orderId,
@@ -120,7 +120,7 @@ export default defineComponent({
                 <span class="text-primary fw-bold fz-14">{{ orderId }}</span>
               </div>
               <div class="col-4 text-end">
-                <button class="btn p-0 js-btn-copy" data-value="0000000">
+                <button class="btn p-0 js-btn-copy" :data-value="orderId">
                   <img
                     :src="`${baseUrl}/1111111111111111111/images/copy.svg`"
                     alt=""
@@ -136,7 +136,9 @@ export default defineComponent({
                 {{
                   customerId
                     ? customerShippingAddress.name
-                    : guestShippingInfo.type_send === 1 ? guestShippingInfo.bill_fullname : guestShippingInfo.fullname
+                    : guestShippingInfo.type_send === 1
+                    ? guestShippingInfo.bill_fullname
+                    : guestShippingInfo.fullname
                 }}
               </div>
             </div>
@@ -146,7 +148,9 @@ export default defineComponent({
                 {{
                   customerId
                     ? customerShippingAddress.phone_number
-                    : guestShippingInfo.type_send === 1 ? guestShippingInfo.bill_phone : guestShippingInfo.phone
+                    : guestShippingInfo.type_send === 1
+                    ? guestShippingInfo.bill_phone
+                    : guestShippingInfo.phone
                 }}
               </div>
             </div>
@@ -168,13 +172,7 @@ export default defineComponent({
             <div class="row gx-3 mb-12">
               <div class="col-4">Thanh toán:</div>
               <div class="col-8 fw-semi">
-                {{
-                  paymentMethodType === 1
-                    ? "Tiền mặt"
-                    : paymentMethodType === 2
-                    ? "Momo"
-                    : "VNPay"
-                }}
+                {{ paymentSelected.name }}
               </div>
             </div>
             <div class="row gx-3 mb-12">

@@ -1,7 +1,7 @@
 <script>
 import { computed, defineComponent, ref, watch } from "@vue/runtime-core";
 import { baseUrl } from "../constant";
-import axios from "../service/axios";;
+import axios from "../service/axios";
 
 export default defineComponent({
   props: ["province_id"],
@@ -27,9 +27,12 @@ export default defineComponent({
         return districtList.value;
       }
 
-      return districtList.value.filter((x) =>
-        x.name.includes(searchString.value)
-      );
+      return districtList.value.filter((x) => {
+        return (
+          x.name.toLowerCase().includes(searchString.value.toLowerCase()) ||
+          x.query.toLowerCase().includes(searchString.value.toLowerCase())
+        );
+      });
     });
 
     // methods

@@ -24,6 +24,14 @@ export default {
     if (state.cart.detail) {
       const gift = state.cart.detail.find((x) => x.type === 2);
       if (gift) {
+        const check = state.giftList.find(x => x.gift_id === gift.gift_id)
+        if (check) {
+          return {
+            ...check,
+            ...gift,
+          }
+        }
+        
         return gift;
       }
 
@@ -224,4 +232,54 @@ export default {
 
     return state.cart.customer_id;
   },
+
+  discountCodeDisplay(state) {
+    if (state.cart.discount_code) {
+      const voucher =  state.voucherList.find(x => x.voucher_id === state.cart.discount_code)
+
+      if (voucher) {
+        return voucher.code
+      }
+    }
+
+    return ""
+  },
+
+  paymentSelected(state) {
+    if (!Array.isArray(state.paymentMethods)) {
+      return {}
+    }
+
+    const result = state.paymentMethods.find(
+      (x) => x.payment_id === state.paymentMethod
+    );
+
+    if (result) {
+      return result;
+    }
+
+    return {};
+  },
+
+  totalType1Price(state) {
+    if (!Array.isArray(state.cart.detail)) {
+      return 0
+    }
+  
+    return state.cart.detail.reduce((previous, current) => {
+      if (current.type === 2 || current.type === 3) {
+        return previous
+      }
+
+      if (current.flash_sale != -1) {
+        return previous = previous + (current.flash_sale * current.quantity)
+      }
+
+      if (current.price_sale >= 0) {
+        return previous = previous + (current.price_sale * current.quantity)
+      }
+
+      return previous = previous + (current.price_retail * current.quantity)
+    }, 0)
+  }
 };

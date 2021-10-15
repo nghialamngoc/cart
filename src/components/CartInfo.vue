@@ -1,8 +1,9 @@
 <script>
-import { computed, defineComponent, onMounted, ref } from "@vue/runtime-core";
+import { computed, defineComponent, onMounted, ref, watch } from "@vue/runtime-core";
 import { useStore } from "vuex";
 import { resolveErrorMessage } from "../helper/resolveErrorMessage";
 import { closeModal, openModal } from "../helper/modal";
+import { money } from "../helper/format";
 
 // constants
 import { baseUrl } from "../constant";
@@ -37,6 +38,8 @@ export default defineComponent({
     const validVoucherList = computed(() => store.getters.validVoucherList);
     const freeShipCondition = computed(() => store.state.freeShipCondition);
     const productWishedList = computed(() => store.state.productWishedList);
+    const discountCodeDisplay = computed(() => store.getters.discountCodeDisplay);
+    const totalType1Price = computed(() => store.getters.totalType1Price);
 
     const voucherCode = ref("");
     const boxDetail = ref({});
@@ -49,7 +52,12 @@ export default defineComponent({
     const swiperInterval = ref(null);
     const collectionSwipper = ref(null);
 
+    watch(() => discountCodeDisplay.value, () => {
+      voucherCode.value = discountCodeDisplay.value
+    })
+
     onMounted(() => {
+      voucherCode.value = discountCodeDisplay.value
       const a = setInterval(() => {
         const el = document.querySelectorAll(".swiper-vertical");
         if (el.length > 0) {
@@ -236,10 +244,13 @@ export default defineComponent({
       productEditId,
       voucherNormal,
       voucherHotList,
+      totalType1Price,
       validVoucherList,
       productWishedList,
       freeShipCondition,
       vouchersSpecialList,
+
+      money,
       buyMore,
       updateCart,
       viewDetail,
@@ -293,13 +304,13 @@ export default defineComponent({
             />
             <div
               class="flex-grow-1"
-              v-if="freeShipCondition.range_from > cart.total_price"
+              v-if="freeShipCondition.range_from > totalType1Price"
             >
               <p class="mb-0">
                 Mua thêm
                 {{
                   Intl.NumberFormat("vi-VN").format(
-                    freeShipCondition.range_from - cart.total_price
+                    freeShipCondition.range_from - totalType1Price
                   )
                 }}đ để hưởng
               </p>
@@ -510,6 +521,10 @@ export default defineComponent({
                     <button
                       type="button"
                       class="btn m-cart__select m-cart__select--size"
+                      @click="
+                        () =>
+                          viewDetail(giftSelected, giftSelected.product_id, 2)
+                      "
                     >
                       Size <strong>{{ giftSelected.attribute.size }}</strong>
                     </button>
@@ -520,7 +535,7 @@ export default defineComponent({
                 <div class="m-cart__edit">
                   <div class="m-cart__edit__left">
                     <div class="m-cart__for">
-                      Áp dụng <br />cho đơn hàng trên 600.000đ
+                      Áp dụng <br />cho đơn hàng trên {{ money(giftSelected.range_from)}}
                     </div>
                   </div>
                   <div class="m-cart__edit__right">
